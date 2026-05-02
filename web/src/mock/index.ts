@@ -220,4 +220,3 @@ export const events = [
 export const topics = ["#gist", "#sports", "#ug-life", "#cameroon", "#finals", "#tech", "#politics", "#music", "#fashion"];
 
 export const currentUser: User = users[0];
-s
