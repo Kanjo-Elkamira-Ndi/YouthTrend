@@ -57,7 +57,14 @@ const Write = () => {
               <Select>
                 <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
                 <SelectContent>
-                  {CATEGORIES.map((c) => <SelectItem key={c.name} value={c.name}>{c.emoji} {c.name}</SelectItem>)}
+                  {CATEGORIES.map((c) => (
+                    <SelectItem key={c.name} value={c.name}>
+                      <span className="inline-flex items-center gap-2">
+                        <c.icon className="h-4 w-4" />
+                        {c.name}
+                      </span>
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>

@@ -4,13 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowRight, BookOpen, PenSquare, Users, Globe, Shield, Heart,
+  ArrowRight, BookOpen, PenSquare, Users, Globe, Shield, Heart, ThumbsUp,
 } from "lucide-react";
 import { posts, campuses } from "@/mock";
 import { PostCard } from "@/components/feed/PostCard";
 import { CategoryPills } from "@/components/feed/CategoryPills";
 import { useState } from "react";
-import { CATEGORIES } from "@/lib/constants";
+import { CATEGORIES, CAMPUS_ICONS } from "@/lib/constants";
 
 // ── Sub-components ───────────────────────────────────────────────────────────
 import { HeroSection }       from "@/components/landing/HeroSection";
@@ -115,13 +115,14 @@ const Landing = () => {
                     />
                   </div>
                   <div className="p-4">
-                    <span className="text-xs font-semibold text-primary">
-                      {catMeta?.emoji} {p.category}
+                    <span className="text-xs font-semibold text-primary inline-flex items-center gap-1">
+                      {catMeta && <catMeta.icon className="h-3.5 w-3.5" />}
+                      {p.category}
                     </span>
                     <h4 className="font-bold mt-1 line-clamp-2 leading-snug">{p.title}</h4>
                     <div className="mt-3 flex items-center justify-between text-xs text-muted-foreground">
                       <span>{p.author.name}</span>
-                      <span>👏 {(p.claps / 1000).toFixed(1)}k</span>
+                      <span className="inline-flex items-center gap-1"><ThumbsUp className="h-3.5 w-3.5" />{(p.claps / 1000).toFixed(1)}k</span>
                     </div>
                   </div>
                 </Link>
@@ -152,10 +153,13 @@ const Landing = () => {
             >
               <div className="flex items-center gap-3 mb-4">
                 <motion.span
-                  className="h-12 w-12 rounded-xl bg-primary/10 text-2xl inline-flex items-center justify-center"
+                  className="h-12 w-12 rounded-xl bg-primary/10 text-primary inline-flex items-center justify-center"
                   whileHover={{ rotate: 10 }}
                 >
-                  {c.emoji}
+                  {(() => {
+                    const CampusIcon = CAMPUS_ICONS[c.short] ?? CATEGORIES[0].icon;
+                    return <CampusIcon className="h-6 w-6" />;
+                  })()}
                 </motion.span>
                 <div>
                   <h3 className="font-bold leading-tight">{c.name}</h3>

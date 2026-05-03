@@ -1,14 +1,28 @@
 import { Post } from "@/types";
 import { AuthorBadge } from "@/components/common/AuthorBadge";
-import { Bookmark, MessageCircle, MoreHorizontal } from "lucide-react";
+import { Bookmark, MessageCircle, MoreHorizontal, Flame, Newspaper, Trophy, GraduationCap, Calendar, Theater, MessageSquare, ThumbsUp } from "lucide-react";
 import { Link } from "react-router-dom";
 import { CATEGORIES } from "@/lib/constants";
 import { motion } from "framer-motion";
 
 type Props = { post: Post; variant?: "compact" | "featured" };
 
+const getCategoryIcon = (name: string) => {
+  switch (name) {
+    case "Gist": return Flame;
+    case "News": return Newspaper;
+    case "Sports": return Trophy;
+    case "Academics": return GraduationCap;
+    case "Events": return Calendar;
+    case "Culture": return Theater;
+    case "Opinion": return MessageSquare;
+    default: return Flame;
+  }
+};
+
 export const PostCard = ({ post, variant = "compact" }: Props) => {
   const cat = CATEGORIES.find((c) => c.name === post.category);
+  const CategoryIcon = getCategoryIcon(cat?.name || "");
 
   if (variant === "featured") {
     return (
@@ -26,7 +40,7 @@ export const PostCard = ({ post, variant = "compact" }: Props) => {
         <div className="p-5 space-y-3">
           <div className="flex items-center gap-2 text-xs">
             <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary font-semibold">
-              {cat?.emoji} {post.category}
+              <CategoryIcon className="h-4 w-4 inline" /> {post.category}
             </span>
             <span className="text-muted-foreground">{post.readMinutes} min read</span>
           </div>
@@ -37,7 +51,7 @@ export const PostCard = ({ post, variant = "compact" }: Props) => {
           <div className="flex items-center justify-between pt-2">
             <AuthorBadge user={post.author} sub={post.publishedAt} />
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
-              <span>👏 {fmt(post.claps)}</span>
+              <span className="inline-flex items-center gap-1"><ThumbsUp className="h-3.5 w-3.5" />{fmt(post.claps)}</span>
               <span className="inline-flex items-center gap-1"><MessageCircle className="h-3.5 w-3.5" />{post.comments}</span>
               <button className="hover:text-primary"><Bookmark className="h-4 w-4" /></button>
             </div>
@@ -68,7 +82,7 @@ export const PostCard = ({ post, variant = "compact" }: Props) => {
           <p className="text-sm text-muted-foreground line-clamp-2">{post.excerpt}</p>
           <div className="flex items-center gap-3 text-xs pt-1">
             <span className="px-2 py-0.5 rounded-full bg-secondary text-secondary-foreground font-semibold">
-              {cat?.emoji} {post.category}
+              <CategoryIcon className="h-4 w-4 inline" /> {post.category}
             </span>
             <span className="text-muted-foreground">{post.readMinutes} min read</span>
           </div>
@@ -80,7 +94,7 @@ export const PostCard = ({ post, variant = "compact" }: Props) => {
         </Link>
       </div>
       <div className="flex items-center gap-4 pt-3 mt-3 border-t border-border text-xs text-muted-foreground">
-        <span>👏 {fmt(post.claps)}</span>
+        <span className="inline-flex items-center gap-1"><ThumbsUp className="h-3.5 w-3.5" />{fmt(post.claps)}</span>
         <span className="inline-flex items-center gap-1"><MessageCircle className="h-3.5 w-3.5" />{post.comments}</span>
         <button className="ml-auto hover:text-primary"><Bookmark className="h-4 w-4" /></button>
       </div>

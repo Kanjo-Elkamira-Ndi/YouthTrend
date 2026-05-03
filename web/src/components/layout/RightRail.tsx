@@ -1,5 +1,6 @@
+import type { ReactNode } from "react";
 import { announcements, trending, topics, events } from "@/mock";
-import { Search } from "lucide-react";
+import { Search, Megaphone, TrendingUp, Tag, CalendarDays, ThumbsUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
 
@@ -10,7 +11,7 @@ export const RightRail = () => (
       <Input placeholder="Search YouthTrend..." className="pl-9 bg-card" />
     </div>
 
-    <Section title="📢 Campus Announcements">
+    <Section title="Campus Announcements" icon={<Megaphone className="h-4 w-4 text-primary" />}>
       <div className="space-y-3">
         {announcements.map((a) => (
           <div key={a.id} className="text-sm">
@@ -25,21 +26,21 @@ export const RightRail = () => (
       </div>
     </Section>
 
-    <Section title="🔥 Trending on Campus">
+    <Section title="Trending on Campus" icon={<TrendingUp className="h-4 w-4 text-primary" />}>
       <ol className="space-y-3">
         {trending.map((t, i) => (
           <li key={t.id} className="flex gap-3">
             <span className="text-2xl font-extrabold text-muted-foreground/40 leading-none">{String(i + 1).padStart(2, "0")}</span>
             <div className="min-w-0">
               <Link to="/post/p1" className="text-sm font-semibold leading-snug hover:text-primary line-clamp-2">{t.title}</Link>
-              <div className="text-xs text-muted-foreground mt-0.5">👏 {t.claps.toLocaleString()}</div>
+              <div className="text-xs text-muted-foreground mt-0.5 inline-flex items-center gap-1"><ThumbsUp className="h-3.5 w-3.5" />{t.claps.toLocaleString()}</div>
             </div>
           </li>
         ))}
       </ol>
     </Section>
 
-    <Section title="🏷️ Explore Topics">
+    <Section title="Explore Topics" icon={<Tag className="h-4 w-4 text-primary" />}>
       <div className="flex flex-wrap gap-2">
         {topics.map((t) => (
           <a key={t} href="#" className="text-xs px-2.5 py-1 rounded-full bg-secondary hover:bg-primary hover:text-primary-foreground transition-colors">{t}</a>
@@ -47,7 +48,7 @@ export const RightRail = () => (
       </div>
     </Section>
 
-    <Section title="📅 Upcoming Events">
+    <Section title="Upcoming Events" icon={<CalendarDays className="h-4 w-4 text-primary" />}>
       <div className="space-y-3">
         {events.map((e) => (
           <div key={e.id} className="flex gap-3">
@@ -66,9 +67,12 @@ export const RightRail = () => (
   </aside>
 );
 
-const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
+const Section = ({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) => (
   <div className="yt-card p-4">
-    <h4 className="text-sm font-bold mb-3">{title}</h4>
+    <div className="flex items-center gap-2 mb-3 text-sm font-bold">
+      {icon}
+      <span>{title}</span>
+    </div>
     {children}
   </div>
 );

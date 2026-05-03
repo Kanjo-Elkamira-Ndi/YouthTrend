@@ -22,7 +22,12 @@ export const CategoryPills = ({ active, onChange, options }: Props) => {
                 ? "bg-primary text-primary-foreground border-primary"
                 : "bg-card text-foreground border-border hover:border-primary/60 hover:text-primary"}`}
           >
-            {cat ? `${cat.emoji} ${it}` : it}
+            {cat ? (
+              <span className="inline-flex items-center gap-2">
+                <cat.icon className="h-4 w-4" />
+                {it}
+              </span>
+            ) : it}
           </button>
         );
       })}
