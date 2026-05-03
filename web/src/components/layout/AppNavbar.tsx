@@ -1,5 +1,5 @@
 import { Logo } from "@/components/common/Logo";
-import { ThemeToggle, LanguageToggle } from "@/components/common/Toggles";
+import { ThemeToggle, LanguageToggle } from "@/components/common/Toggle";
 import { Bell, Search, Home, Compass, Bookmark, User } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Link, NavLink } from "react-router-dom";

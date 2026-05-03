@@ -1,6 +1,6 @@
 import { Link, NavLink } from "react-router-dom";
 import { Logo } from "@/components/common/Logo";
-import { ThemeToggle, LanguageToggle } from "@/components/common/Toggles";
+import { ThemeToggle, LanguageToggle } from "@/components/common/Toggle";
 import { useState } from "react";
 import { Menu, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
