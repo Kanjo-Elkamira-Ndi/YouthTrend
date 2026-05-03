@@ -1,9 +1,9 @@
 import { SplitScreen } from "@/components/auth/SplitScreen";
-import { SocialRow, Divider } from "@/components/auth/SocialButtons";
+import { SocialRow, Divider } from "@/components/auth/SocialButton";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { LanguageToggle } from "@/components/common/Toggles";
+import { LanguageToggle } from "@/components/common/Toggle";
 import { Eye, EyeOff, ArrowRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { useState } from "react";

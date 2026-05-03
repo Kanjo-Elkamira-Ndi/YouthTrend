@@ -1,36 +1,31 @@
-import { Moon, Sun } from "lucide-react";
-import { useTheme } from "@/context/ThemeContext";
-import { motion } from "framer-motion";
+import { CATEGORIES } from "@/lib/constants";
 
-export const ThemeToggle = () => {
-  const { theme, toggleTheme } = useTheme();
-  return (
-    <button
-      onClick={toggleTheme}
-      aria-label="Toggle theme"
-      className="h-9 w-9 inline-flex items-center justify-center rounded-lg border border-border hover:bg-secondary transition-colors"
-    >
-      <motion.span
-        key={theme}
-        initial={{ rotate: -90, opacity: 0 }}
-        animate={{ rotate: 0, opacity: 1 }}
-        transition={{ duration: 0.2 }}
-      >
-        {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-      </motion.span>
-    </button>
-  );
+type Props = {
+  active: string;
+  onChange: (v: string) => void;
+  options?: string[];
 };
 
-export const LanguageToggle = () => {
-  const { lang, toggleLang } = useTheme();
+export const CategoryPills = ({ active, onChange, options }: Props) => {
+  const items = ["All", ...(options ?? CATEGORIES.map((c) => c.name))];
   return (
-    <button
-      onClick={toggleLang}
-      aria-label="Toggle language"
-      className="h-9 px-3 inline-flex items-center justify-center rounded-lg border border-border hover:bg-secondary transition-colors text-xs font-semibold"
-    >
-      {lang === "en" ? "🇬🇧 EN" : "🇫🇷 FR"}
-    </button>
+    <div className="flex flex-wrap gap-2">
+      {items.map((it) => {
+        const cat = CATEGORIES.find((c) => c.name === it);
+        const isActive = active === it;
+        return (
+          <button
+            key={it}
+            onClick={() => onChange(it)}
+            className={`px-3.5 py-1.5 rounded-full text-sm font-medium border transition-all
+              ${isActive
+                ? "bg-primary text-primary-foreground border-primary"
+                : "bg-card text-foreground border-border hover:border-primary/60 hover:text-primary"}`}
+          >
+            {cat ? `${cat.emoji} ${it}` : it}
+          </button>
+        );
+      })}
+    </div>
   );
 };
