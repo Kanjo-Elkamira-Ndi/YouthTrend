@@ -5,6 +5,7 @@ import { posts, campuses, topics } from "@/mock";
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Search } from "lucide-react";
+import { CAMPUS_ICONS } from "@/lib/constants";
 
 const Explore = () => {
   const [cat, setCat] = useState("All");
@@ -23,15 +24,20 @@ const Explore = () => {
         </div>
 
         <div className="grid md:grid-cols-3 gap-4">
-          {campuses.map((c) => (
-            <div key={c.id} className="yt-card yt-card-hover p-4 flex items-center gap-3">
-              <span className="h-12 w-12 rounded-xl bg-primary/10 inline-flex items-center justify-center text-2xl">{c.emoji}</span>
-              <div>
-                <div className="font-bold">{c.short}</div>
-                <div className="text-xs text-muted-foreground">{c.members.toLocaleString()} members</div>
+          {campuses.map((c) => {
+            const CampusIcon = CAMPUS_ICONS[c.short] ?? CAMPUS_ICONS.UY1;
+            return (
+              <div key={c.id} className="yt-card yt-card-hover p-4 flex items-center gap-3">
+                <span className="h-12 w-12 rounded-xl bg-primary/10 inline-flex items-center justify-center text-primary">
+                  <CampusIcon className="h-6 w-6" />
+                </span>
+                <div>
+                  <div className="font-bold">{c.short}</div>
+                  <div className="text-xs text-muted-foreground">{c.members.toLocaleString()} members</div>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         <div>

@@ -1,5 +1,5 @@
 import { Logo } from "@/components/common/Logo";
-import { Twitter, Instagram } from "lucide-react";
+import { Twitter, Instagram, MessageCircle } from "lucide-react";
 
 export const Footer = () => (
   <footer className="border-t border-border bg-card/50">
@@ -22,12 +22,12 @@ export const Footer = () => (
         <div className="flex gap-3">
           <a href="#" className="h-9 w-9 rounded-lg border border-border inline-flex items-center justify-center hover:bg-secondary"><Twitter className="h-4 w-4" /></a>
           <a href="#" className="h-9 w-9 rounded-lg border border-border inline-flex items-center justify-center hover:bg-secondary"><Instagram className="h-4 w-4" /></a>
-          <a href="#" className="h-9 w-9 rounded-lg border border-border inline-flex items-center justify-center hover:bg-secondary text-sm">💬</a>
+          <a href="#" className="h-9 w-9 rounded-lg border border-border inline-flex items-center justify-center hover:bg-secondary"><MessageCircle className="h-4 w-4" /></a>
         </div>
       </div>
     </div>
     <div className="border-t border-border">
-      <div className="container py-4 text-xs text-muted-foreground">© 2026 YouthTrend. All rights reserved.</div>
+      <div className="container py-4 text-xs text-muted-foreground">Courtesy of Alchemy Codes © 2026 YouthTrend. All rights reserved.</div>
     </div>
   </footer>
 );

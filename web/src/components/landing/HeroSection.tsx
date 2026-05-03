@@ -13,54 +13,106 @@ const HERO_IMAGES = [
   "https://images.unsplash.com/photo-1529156069898-49953e39b3ac?w=800&h=600&fit=crop",
 ];
 
-// ── Stat card data ────────────────────────────────────────────────────────────
+// ── Stat definitions — green variants only ───────────────────────────────────
 const STATS = [
   {
     icon: Users,
     value: "2.4k+",
     label: "Active Students",
-    color: "text-primary",
-    bg: "bg-primary/15",
-    // position relative to the carousel wrapper
-    position: "top-[-1.5rem] left-[-5rem]",
+    iconColor: "text-primary",
+    iconBg:    "bg-primary/15",
+    desktopPos: { top: "-1.5rem",  left: "-5.5rem" },
     delay: 0.4,
   },
   {
     icon: PenSquare,
     value: "1.2k+",
     label: "Stories Shared",
-    color: "text-sky-400",
-    bg: "bg-sky-400/15",
-    position: "bottom-[3rem] left-[-5.5rem]",
+    iconColor: "text-emerald-400",
+    iconBg:    "bg-emerald-400/15",
+    desktopPos: { bottom: "3rem",  left: "-5.5rem" },
     delay: 0.6,
   },
   {
     icon: TrendingUp,
     value: "94%",
     label: "Returning Readers",
-    color: "text-amber-400",
-    bg: "bg-amber-400/15",
-    position: "top-[40%] right-[-5rem]",
+    iconColor: "text-green-300",
+    iconBg:    "bg-green-300/15",
+    desktopPos: { top: "40%",     right: "-5.5rem" },
     delay: 0.8,
   },
 ] as const;
 
-// ── Component ─────────────────────────────────────────────────────────────────
+// ── Carousel image block (shared by mobile + desktop) ────────────────────────
+const CarouselImage = ({
+  imgIdx,
+  setImgIdx,
+  height,
+}: {
+  imgIdx: number;
+  setImgIdx: (i: number) => void;
+  height: string;
+}) => (
+  <div
+    className={`relative ${height} w-full rounded-2xl overflow-hidden shadow-2xl border border-white/10`}
+  >
+    <AnimatePresence mode="wait">
+      <motion.img
+        key={imgIdx}
+        src={HERO_IMAGES[imgIdx]}
+        alt="Campus life"
+        className="absolute inset-0 w-full h-full object-cover"
+        initial={{ opacity: 0, scale: 1.06 }}
+        animate={{ opacity: 1, scale: 1  }}
+        exit={  { opacity: 0, scale: 0.97 }}
+        transition={{ duration: 0.7, ease: "easeInOut" }}
+      />
+    </AnimatePresence>
+
+    {/* Dark-to-transparent overlay */}
+    <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
+
+    {/* Bottom label */}
+    <div className="absolute bottom-4 left-4 flex items-center gap-2 text-white text-sm">
+      <Sparkles className="h-4 w-4 text-primary" />
+      <span className="font-medium">Campus moments</span>
+    </div>
+
+    {/* Dot indicators */}
+    <div className="absolute bottom-4 right-4 flex gap-1.5">
+      {HERO_IMAGES.map((_, i) => (
+        <button
+          key={i}
+          onClick={() => setImgIdx(i)}
+          className={`h-1.5 rounded-full transition-all duration-300 ${
+            i === imgIdx ? "w-6 bg-primary" : "w-1.5 bg-white/40"
+          }`}
+        />
+      ))}
+    </div>
+  </div>
+);
+
+// ── Main component ────────────────────────────────────────────────────────────
 export const HeroSection = () => {
   const [imgIdx, setImgIdx] = useState(0);
 
   useEffect(() => {
-    const t = setInterval(() => setImgIdx((i) => (i + 1) % HERO_IMAGES.length), 4000);
+    const t = setInterval(
+      () => setImgIdx((i) => (i + 1) % HERO_IMAGES.length),
+      4000,
+    );
     return () => clearInterval(t);
   }, []);
 
   return (
     <section className="relative overflow-hidden min-h-[92vh] flex items-center">
 
-      {/* ── Galaxy atmosphere ───────────────────────────────────────────────── */}
-      <div className="absolute inset-0 bg-gradient-to-b from-purple-900/20 via-background to-background pointer-events-none" />
+      {/* ── Atmosphere — green palette only ────────────────────────────────── */}
+      <div className="absolute inset-0 bg-gradient-to-b from-green-900/20 via-background to-background pointer-events-none" />
 
-      {/* Animated stars */}
+      {/* Stars */}
       <div className="absolute inset-0 pointer-events-none">
         {Array.from({ length: 60 }).map((_, i) => (
           <motion.div
@@ -69,10 +121,10 @@ export const HeroSection = () => {
             style={{
               width:  Math.random() * 2.5 + 0.5,
               height: Math.random() * 2.5 + 0.5,
-              top:  `${Math.random() * 100}%`,
-              left: `${Math.random() * 100}%`,
+              top:    `${Math.random() * 100}%`,
+              left:   `${Math.random() * 100}%`,
             }}
-            animate={{ opacity: [0.15, 1, 0.15], scale: [1, 1.6, 1] }}
+            animate={{ opacity: [0.1, 0.9, 0.1], scale: [1, 1.5, 1] }}
             transition={{
               duration: Math.random() * 3 + 2,
               repeat: Infinity,
@@ -82,46 +134,45 @@ export const HeroSection = () => {
         ))}
       </div>
 
-      {/* Nebula orbs */}
+      {/* Nebula orbs — green only */}
       <motion.div
-        className="absolute top-16 -left-48 h-[28rem] w-[28rem] rounded-full bg-purple-500/20 blur-3xl pointer-events-none"
+        className="absolute top-16 -left-48 h-[28rem] w-[28rem] rounded-full bg-green-800/25 blur-3xl pointer-events-none"
         animate={{ x: [0, 60, 0], y: [0, 30, 0] }}
         transition={{ duration: 22, repeat: Infinity, ease: "easeInOut" }}
       />
       <motion.div
-        className="absolute bottom-0 -right-48 h-[28rem] w-[28rem] rounded-full bg-blue-500/15 blur-3xl pointer-events-none"
+        className="absolute bottom-0 -right-48 h-[28rem] w-[28rem] rounded-full bg-emerald-700/20 blur-3xl pointer-events-none"
         animate={{ x: [0, -50, 0], y: [0, -40, 0] }}
         transition={{ duration: 28, repeat: Infinity, ease: "easeInOut", delay: 3 }}
       />
       <motion.div
         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-[40rem] w-[40rem] rounded-full bg-primary/5 blur-3xl pointer-events-none"
-        animate={{ scale: [1, 1.25, 1], opacity: [0.25, 0.45, 0.25] }}
+        animate={{ scale: [1, 1.25, 1], opacity: [0.2, 0.4, 0.2] }}
         transition={{ duration: 16, repeat: Infinity, ease: "easeInOut" }}
       />
 
-      {/* Rotating rings */}
+      {/* Rotating rings — green only */}
       <motion.div
         className="absolute top-1/4 left-1/3 h-28 w-28 rounded-full border border-primary/20 pointer-events-none"
         animate={{ rotate: 360 }}
         transition={{ duration: 32, repeat: Infinity, ease: "linear" }}
       />
       <motion.div
-        className="absolute bottom-1/3 right-1/3 h-44 w-44 rounded-full border border-purple-500/15 pointer-events-none"
+        className="absolute bottom-1/3 right-1/3 h-44 w-44 rounded-full border border-green-600/15 pointer-events-none"
         animate={{ rotate: -360 }}
         transition={{ duration: 44, repeat: Infinity, ease: "linear" }}
       />
 
-      {/* ── Main layout ─────────────────────────────────────────────────────── */}
-      <div className="container relative grid lg:grid-cols-2 gap-16 items-center pt-24 pb-28 md:pt-32">
+      {/* ── Main grid ────────────────────────────────────────────────────────── */}
+      <div className="container relative grid lg:grid-cols-2 gap-10 lg:gap-16 items-center pt-24 pb-16 md:pt-32 md:pb-24">
 
-        {/* ── Left: copy ──────────────────────────────────────────────────── */}
+        {/* ── Left: copy ─────────────────────────────────────────────────────── */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.7 }}
           className="text-center lg:text-left"
         >
-          {/* Badge */}
           <motion.span
             className="inline-flex items-center gap-2 px-3 py-1 rounded-full text-xs font-semibold bg-primary/10 text-primary mb-6"
             whileHover={{ scale: 1.06 }}
@@ -130,7 +181,6 @@ export const HeroSection = () => {
             Built for Cameroonian campuses
           </motion.span>
 
-          {/* Headline */}
           <h1 className="text-4xl sm:text-5xl md:text-6xl xl:text-7xl font-extrabold tracking-tight leading-[1.06]">
             Your Campus.{" "}
             <motion.span
@@ -141,7 +191,8 @@ export const HeroSection = () => {
               Your Gist.
             </motion.span>{" "}
             <br />
-            <span className="bg-gradient-to-r from-primary via-purple-400 to-pink-500 bg-clip-text text-transparent">
+            {/* Green-only gradient — dark green → mid → light green */}
+            <span className="bg-gradient-to-r from-green-400 via-emerald-400 to-green-300 bg-clip-text text-transparent">
               Your Voice.
             </span>
           </h1>
@@ -151,13 +202,15 @@ export const HeroSection = () => {
             hot takes — all in one place.
           </p>
 
-          {/* CTAs */}
           <div className="mt-8 flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.96 }}>
               <Link to="/write">
                 <Button size="lg" className="bg-primary hover:bg-primary/90 h-12 px-6">
                   Start Writing
-                  <motion.span animate={{ x: [0, 5, 0] }} transition={{ duration: 1.2, repeat: Infinity }}>
+                  <motion.span
+                    animate={{ x: [0, 5, 0] }}
+                    transition={{ duration: 1.2, repeat: Infinity }}
+                  >
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </motion.span>
                 </Button>
@@ -183,7 +236,7 @@ export const HeroSection = () => {
             across 3 campuses
           </motion.p>
 
-          {/* Scroll indicator */}
+          {/* Scroll indicator — desktop only */}
           <motion.div
             className="hidden lg:flex flex-col items-start gap-2 mt-14 ml-1"
             animate={{ y: [0, 8, 0] }}
@@ -200,87 +253,86 @@ export const HeroSection = () => {
           </motion.div>
         </motion.div>
 
-        {/* ── Right: carousel + orbiting stats ────────────────────────────── */}
-        {/*
-          We wrap everything in a relative container that is inset from the
-          right edge (pr-10 xl:pr-16). The stat cards use absolute positioning
-          relative to THIS wrapper, so they "orbit" the image naturally.
-        */}
-        <div className="hidden lg:flex justify-center">
-          <div className="relative w-80 xl:w-96" style={{ marginRight: "2.5rem" }}>
+        {/* ── Right: carousel ─────────────────────────────────────────────────── */}
 
-            {/* Decorative outer glow ring */}
+        {/* DESKTOP (lg+): orbiting stat cards around carousel */}
+        <div
+          className="relative w-80 xl:w-96 hidden lg:block"
+          style={{ marginRight: "2.5rem" }}
+        >
+          {/* Decorative glow rings — green only */}
+          <motion.div
+            className="absolute inset-0 -m-4 rounded-3xl border border-primary/20"
+            animate={{ scale: [1, 1.04, 1], opacity: [0.4, 1, 0.4] }}
+            transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
+          />
+          <motion.div
+            className="absolute inset-0 -m-8 rounded-3xl border border-green-600/10"
+            animate={{ rotate: [0, 3, 0, -3, 0] }}
+            transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
+          />
+
+          <CarouselImage
+            imgIdx={imgIdx}
+            setImgIdx={setImgIdx}
+            height="h-[26rem] xl:h-[30rem]"
+          />
+
+          {/* Orbiting stat cards */}
+          {STATS.map((stat) => (
             <motion.div
-              className="absolute inset-0 -m-4 rounded-3xl border border-primary/20"
-              animate={{ scale: [1, 1.04, 1], opacity: [0.5, 1, 0.5] }}
-              transition={{ duration: 6, repeat: Infinity, ease: "easeInOut" }}
-            />
-            <motion.div
-              className="absolute inset-0 -m-8 rounded-3xl border border-purple-400/10"
-              animate={{ rotate: [0, 3, 0, -3, 0] }}
-              transition={{ duration: 12, repeat: Infinity, ease: "easeInOut" }}
-            />
-
-            {/* Image carousel */}
-            <div className="relative h-[26rem] xl:h-[30rem] w-full rounded-2xl overflow-hidden shadow-2xl border border-white/10">
-              <AnimatePresence mode="wait">
-                <motion.img
-                  key={imgIdx}
-                  src={HERO_IMAGES[imgIdx]}
-                  alt="Campus life"
-                  className="absolute inset-0 w-full h-full object-cover"
-                  initial={{ opacity: 0, scale: 1.06, rotateY: -8 }}
-                  animate={{ opacity: 1, scale: 1, rotateY: 0 }}
-                  exit={{ opacity: 0, scale: 0.96, rotateY: 8 }}
-                  transition={{ duration: 0.75, type: "spring", stiffness: 90 }}
-                />
-              </AnimatePresence>
-
-              {/* Gradient overlay */}
-              <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
-
-              {/* Bottom label */}
-              <div className="absolute bottom-4 left-4 flex items-center gap-2 text-white text-sm">
-                <Sparkles className="h-4 w-4 text-primary" />
-                <span className="font-medium">Campus moments</span>
+              key={stat.label}
+              className="absolute bg-background/85 backdrop-blur-xl rounded-2xl px-4 py-3 border border-white/10 shadow-xl"
+              style={stat.desktopPos}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: stat.delay, type: "spring", stiffness: 120 }}
+              whileHover={{ scale: 1.06, y: -3 }}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className={`h-9 w-9 rounded-xl ${stat.iconBg} flex items-center justify-center shrink-0`}
+                >
+                  <stat.icon className={`h-4 w-4 ${stat.iconColor}`} />
+                </div>
+                <div>
+                  <div className="text-xl font-extrabold leading-none">{stat.value}</div>
+                  <div className="text-[11px] text-muted-foreground mt-0.5 whitespace-nowrap">
+                    {stat.label}
+                  </div>
+                </div>
               </div>
+            </motion.div>
+          ))}
+        </div>
 
-              {/* Dot indicators */}
-              <div className="absolute bottom-4 right-4 flex gap-1.5">
-                {HERO_IMAGES.map((_, i) => (
-                  <button
-                    key={i}
-                    onClick={() => setImgIdx(i)}
-                    className={`h-1.5 rounded-full transition-all duration-300 ${
-                      i === imgIdx ? "w-6 bg-primary" : "w-1.5 bg-white/40"
-                    }`}
-                  />
-                ))}
-              </div>
-            </div>
+        {/* MOBILE / TABLET (< lg): carousel + compact stat row */}
+        <div className="lg:hidden w-full max-w-sm mx-auto flex flex-col gap-4">
+          <CarouselImage
+            imgIdx={imgIdx}
+            setImgIdx={setImgIdx}
+            height="h-64 sm:h-80"
+          />
 
-            {/* ── Orbiting stat cards ──────────────────────────────────────── */}
+          {/* Stat cards in a 3-column grid row */}
+          <div className="grid grid-cols-3 gap-2">
             {STATS.map((stat) => (
               <motion.div
                 key={stat.label}
-                className={`absolute ${stat.position} bg-background/85 backdrop-blur-xl rounded-2xl px-4 py-3 border border-white/10 shadow-xl`}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                transition={{ delay: stat.delay, type: "spring", stiffness: 120 }}
-                whileHover={{ scale: 1.07, y: -3 }}
+                className="bg-background/80 backdrop-blur-xl rounded-xl px-2 py-3 border border-white/10 shadow-lg flex flex-col items-center text-center gap-1.5"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y:  0 }}
+                transition={{ delay: stat.delay }}
               >
-                <div className="flex items-center gap-3">
-                  <div className={`h-9 w-9 rounded-xl ${stat.bg} flex items-center justify-center shrink-0`}>
-                    <stat.icon className={`h-4 w-4 ${stat.color}`} />
-                  </div>
-                  <div>
-                    <div className="text-xl font-extrabold leading-none">{stat.value}</div>
-                    <div className="text-[11px] text-muted-foreground mt-0.5 whitespace-nowrap">{stat.label}</div>
-                  </div>
+                <div
+                  className={`h-8 w-8 rounded-lg ${stat.iconBg} flex items-center justify-center`}
+                >
+                  <stat.icon className={`h-4 w-4 ${stat.iconColor}`} />
                 </div>
+                <div className="text-base font-extrabold leading-none">{stat.value}</div>
+                <div className="text-[10px] text-muted-foreground leading-tight">{stat.label}</div>
               </motion.div>
             ))}
-
           </div>
         </div>
 

@@ -3,7 +3,7 @@ import { posts, comments } from "@/mock";
 import { useParams, Link } from "react-router-dom";
 import { AuthorBadge } from "@/components/common/AuthorBadge";
 import { Button } from "@/components/ui/button";
-import { Bookmark, MessageCircle, Share2, MoreHorizontal } from "lucide-react";
+import { Bookmark, MessageCircle, Share2, MoreHorizontal, PartyPopper, ThumbsUp, MessageSquare } from "lucide-react";
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { PostCard } from "@/components/feed/PostCard";
@@ -30,7 +30,7 @@ const PostView = () => {
       <article className="max-w-3xl mx-auto relative">
         {/* Floating action bar */}
         <div className="hidden xl:flex flex-col gap-3 absolute -left-20 top-32 sticky-actions">
-          <ActionBtn icon="👏" label={claps} onClick={onClap} />
+          <ActionBtn icon={<PartyPopper className="h-4 w-4" />} label={claps} onClick={onClap} />
           <ActionBtn icon={<MessageCircle className="h-4 w-4" />} label={post.comments} />
           <ActionBtn icon={<Bookmark className="h-4 w-4" />} />
           <ActionBtn icon={<Share2 className="h-4 w-4" />} />
@@ -41,7 +41,10 @@ const PostView = () => {
         </div>
 
         <div className="flex items-center gap-2 mb-3">
-          <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-primary/10 text-primary">{cat?.emoji} {post.category}</span>
+          <span className="inline-flex items-center gap-2 text-xs font-bold px-2.5 py-1 rounded-full bg-primary/10 text-primary">
+            {cat && <cat.icon className="h-4 w-4" />}
+            {post.category}
+          </span>
           <span className="text-xs text-muted-foreground">{post.readMinutes} min read · {post.publishedAt}</span>
         </div>
 
@@ -66,7 +69,7 @@ const PostView = () => {
           })}
         </div>
 
-        {/* Big clap */}
+        {/* Big clap button */}
         <div className="mt-12 flex flex-col items-center gap-3 py-8 border-y border-border">
           <button onClick={onClap} className="relative h-20 w-20 rounded-full bg-primary/10 hover:bg-primary/20 inline-flex items-center justify-center text-4xl active:scale-90 transition-transform">
             👏
@@ -139,8 +142,8 @@ const CommentRow = ({ c }: { c: typeof comments[0] }) => (
       </div>
       <p className="text-sm">{c.text}</p>
       <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
-        <button className="hover:text-primary">👍 {c.likes}</button>
-        <button className="hover:text-primary">💬 Reply</button>
+        <button className="inline-flex items-center gap-1 hover:text-primary"><ThumbsUp className="h-3.5 w-3.5" />{c.likes}</button>
+        <button className="inline-flex items-center gap-1 hover:text-primary"><MessageSquare className="h-3.5 w-3.5" />Reply</button>
         <button className="hover:text-foreground ml-auto"><MoreHorizontal className="h-3.5 w-3.5" /></button>
       </div>
     </div>

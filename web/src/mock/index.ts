@@ -191,12 +191,12 @@ export const comments: Comment[] = [
 ];
 
 export const notifications: AppNotification[] = [
-  { id: "n1", icon: "👏", text: "Kofi Mbarga clapped for your post 27 times", time: "12m ago", read: false, group: "Today" },
-  { id: "n2", icon: "💬", text: "New comment on 'UY1 Football Final Results'", time: "1h ago", read: false, group: "Today" },
-  { id: "n3", icon: "📢", text: "YouthTrend Campus Announcement: Exam timetable released", time: "3h ago", read: true, group: "Today" },
-  { id: "n4", icon: "👤", text: "Amara Ngono started following you", time: "6h ago", read: true, group: "Today" },
-  { id: "n5", icon: "🔖", text: "Fatima bookmarked your story on FMBS results", time: "2d ago", read: true, group: "This Week" },
-  { id: "n6", icon: "👏", text: "Your post 'Best Ndolé Spots' crossed 2,000 claps", time: "3d ago", read: true, group: "This Week" },
+  { id: "n1", icon: "clap", text: "Kofi Mbarga clapped for your post 27 times", time: "12m ago", read: false, group: "Today" },
+  { id: "n2", icon: "comment", text: "New comment on 'UY1 Football Final Results'", time: "1h ago", read: false, group: "Today" },
+  { id: "n3", icon: "announcement", text: "YouthTrend Campus Announcement: Exam timetable released", time: "3h ago", read: true, group: "Today" },
+  { id: "n4", icon: "follow", text: "Amara Ngono started following you", time: "6h ago", read: true, group: "Today" },
+  { id: "n5", icon: "save", text: "Fatima bookmarked your story on FMBS results", time: "2d ago", read: true, group: "This Week" },
+  { id: "n6", icon: "clap", text: "Your post 'Best Ndolé Spots' crossed 2,000 claps", time: "3d ago", read: true, group: "This Week" },
 ];
 
 export const announcements = [
