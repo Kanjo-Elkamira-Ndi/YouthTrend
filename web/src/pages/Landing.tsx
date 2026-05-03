@@ -15,7 +15,6 @@ import { CATEGORIES } from "@/lib/constants";
 // ── Sub-components ───────────────────────────────────────────────────────────
 import { HeroSection }       from "@/components/landing/HeroSection";
 import { SectionHeading, TestimonialsSection }    from "@/components/landing/SectionHeading";
-// import {  } from "@/components/landing/TestimonialsSection";
 
 // ── Data ─────────────────────────────────────────────────────────────────────
 const HOW_IT_WORKS = [
