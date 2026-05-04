@@ -16,7 +16,7 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { Logo } from "@/components/common/Logo";
-import { ThemeToggle } from "@/components/common/Toggles";
+import { ThemeToggle } from "@/components/common/Toggle";
 import { mockCampus } from "@/mock/campusAdmin";
 import {
   DropdownMenu,
