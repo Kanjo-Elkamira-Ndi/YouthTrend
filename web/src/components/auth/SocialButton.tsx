@@ -1,5 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { ReactNode } from "react";
+import { Chrome, Facebook, Apple, X } from "lucide-react";
 
 export const SocialButton = ({ icon, label }: { icon: ReactNode; label: string }) => (
   <Button variant="outline" className="w-full h-11 justify-start gap-3 font-medium">
@@ -10,10 +11,10 @@ export const SocialButton = ({ icon, label }: { icon: ReactNode; label: string }
 
 export const SocialRow = () => (
   <div className="grid grid-cols-2 gap-2.5">
-    <SocialButton icon={<span className="text-base">G</span>} label="Google" />
-    <SocialButton icon={<span className="text-base text-link">f</span>} label="Facebook" />
-    <SocialButton icon={<span>🍎</span>} label="Apple" />
-    <SocialButton icon={<span className="font-bold">𝕏</span>} label="X" />
+    <SocialButton icon={<Chrome className="h-5 w-5" />} label="Google" />
+    <SocialButton icon={<Facebook className="h-5 w-5 text-[#1877F2]" />} label="Facebook" />
+    <SocialButton icon={<Apple className="h-5 w-5" />} label="Apple" />
+    <SocialButton icon={<X className="h-5 w-5" />} label="X" />
   </div>
 );
 
