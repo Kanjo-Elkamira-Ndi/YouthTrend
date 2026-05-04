@@ -4,18 +4,22 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/context/ThemeContext";
-import Landing from "./pages/Landing";
-import SignIn from "./pages/SignIn";
-import SignUp from "./pages/SignUp";
-import Feed from "./pages/Feed";
-import PostView from "./pages/PostView";
-import Write from "./pages/Write";
-import Profile from "./pages/Profile";
-import Bookmarks from "./pages/Bookmarks";
-import Notifications from "./pages/Notifications";
-import Settings from "./pages/Settings";
-import Explore from "./pages/Explore";
-import NotFound from "./pages/NotFound";
+
+import Landing        from "./pages/Landing";
+import SignIn         from "./pages/SignIn";
+import SignUp         from "./pages/SignUp";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword  from "./pages/ResetPassword";
+import CheckInbox     from "./pages/CheckInbox";
+import Feed           from "./pages/Feed";
+import PostView       from "./pages/PostView";
+import Write          from "./pages/Write";
+import Profile        from "./pages/Profile";
+import Bookmarks      from "./pages/Bookmarks";
+import Notifications  from "./pages/Notifications";
+import Settings       from "./pages/Settings";
+import Explore        from "./pages/Explore";
+import NotFound       from "./pages/NotFound";
 
 const queryClient = new QueryClient();
 
@@ -27,17 +31,27 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <Routes>
-            <Route path="/" element={<Landing />} />
-            <Route path="/signin" element={<SignIn />} />
-            <Route path="/signup" element={<SignUp />} />
-            <Route path="/feed" element={<Feed />} />
-            <Route path="/post/:id" element={<PostView />} />
-            <Route path="/write" element={<Write />} />
-            <Route path="/profile/:username" element={<Profile />} />
-            <Route path="/bookmarks" element={<Bookmarks />} />
-            <Route path="/notifications" element={<Notifications />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/explore" element={<Explore />} />
+            {/* ── Public ── */}
+            <Route path="/"                element={<Landing />}        />
+            <Route path="/signin"          element={<SignIn />}          />
+            <Route path="/signup"          element={<SignUp />}          />
+            <Route path="/forgot-password" element={<ForgotPassword />}  />
+            <Route path="/reset-password"  element={<ResetPassword />}   />
+            {/* /check-inbox?mode=reset  → after ForgotPassword        */}
+            {/* /check-inbox?mode=verify → after SignUp                 */}
+            <Route path="/check-inbox"     element={<CheckInbox />}      />
+
+            {/* ── Authenticated ── */}
+            <Route path="/feed"                element={<Feed />}         />
+            <Route path="/post/:id"            element={<PostView />}     />
+            <Route path="/write"               element={<Write />}        />
+            <Route path="/profile/:username"   element={<Profile />}      />
+            <Route path="/bookmarks"           element={<Bookmarks />}    />
+            <Route path="/notifications"       element={<Notifications />}/>
+            <Route path="/settings"            element={<Settings />}     />
+            <Route path="/explore"             element={<Explore />}      />
+
+            {/* ── Fallback ── */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
