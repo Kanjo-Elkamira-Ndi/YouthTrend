@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -21,6 +21,14 @@ import Settings       from "./pages/Settings";
 import Explore        from "./pages/Explore";
 import NotFound       from "./pages/NotFound";
 
+// Campus Admin Imports
+import CampusAdminLayout from "./components/layout/CampusAdminLayout";
+import CampusAdminDashboard from "./pages/campus-admin/CampusAdminDashboard";
+import CampusAdminUsers from "./pages/campus-admin/CampusAdminUsers";
+import CampusAdminContent from "./pages/campus-admin/CampusAdminContent";
+import CampusAdminModeration from "./pages/campus-admin/CampusAdminModeration";
+import CampusAdminAnnouncements from "./pages/campus-admin/CampusAdminAnnouncements";
+import CampusAdminSettings from "./pages/campus-admin/CampusAdminSettings";
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -50,6 +58,17 @@ const App = () => (
             <Route path="/notifications"       element={<Notifications />}/>
             <Route path="/settings"            element={<Settings />}     />
             <Route path="/explore"             element={<Explore />}      />
+
+            {/* ── Campus Admin ── */}
+            <Route path="/campus-admin" element={<CampusAdminLayout />}>
+              <Route index element={<Navigate to="/campus-admin/dashboard" replace />} />
+              <Route path="dashboard" element={<CampusAdminDashboard />} />
+              <Route path="users" element={<CampusAdminUsers />} />
+              <Route path="content" element={<CampusAdminContent />} />
+              <Route path="moderation" element={<CampusAdminModeration />} />
+              <Route path="announcements" element={<CampusAdminAnnouncements />} />
+              <Route path="settings" element={<CampusAdminSettings />} />
+            </Route>
 
             {/* ── Fallback ── */}
             <Route path="*" element={<NotFound />} />
