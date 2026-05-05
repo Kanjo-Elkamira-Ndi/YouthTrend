@@ -120,7 +120,7 @@ const SuperAdminPlatformSettings = () => {
                 {cats.map((c, i) => (
                   <div key={c.name} className="flex items-center gap-2 p-2 rounded-md border border-border">
                     <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
-                    <Input className="w-16 text-center" defaultValue={c.emoji} />
+                    <Input className="w-16 text-center" defaultValue={(c as any).emoji} />
                     <Input className="flex-1" defaultValue={c.name} />
                     <Switch checked={c.active} onCheckedChange={(v) => setCats(cats.map((x, j) => j === i ? { ...x, active: v } : x))} />
                     <Button size="icon" variant="ghost" className="text-red-400 h-8 w-8"><Trash2 className="h-4 w-4" /></Button>
