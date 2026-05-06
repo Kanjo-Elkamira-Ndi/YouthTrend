@@ -31,6 +31,16 @@ import CampusAdminAnnouncements from "./pages/campus-admin/CampusAdminAnnounceme
 import CampusAdminSettings from "./pages/campus-admin/CampusAdminSettings";
 const queryClient = new QueryClient();
 
+// Super Admin Imports
+import SuperAdminLayout from "./components/layout/SuperAdminLayout";
+import SuperAdminDashboard from "./pages/super-admin/SuperAdminDashboard";
+import SuperAdminCampuses from "./pages/super-admin/SuperAdminCampuses";
+import SuperAdminUsers from "./pages/super-admin/SuperAdminUsers";
+import SuperAdminContent from "./pages/super-admin/SuperAdminContent";
+import SuperAdminModeration from "./pages/super-admin/SuperAdminModeration";
+import SuperAdminAnalytics from "./pages/super-admin/SuperAdminAnalytics";
+import SuperAdminPlatformSettings from "./pages/super-admin/SuperAdminPlatformSettings";
+import SuperAdminAuditLog from "./pages/super-admin/SuperAdminAuditLog";
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <ThemeProvider>
@@ -70,6 +80,18 @@ const App = () => (
               <Route path="settings" element={<CampusAdminSettings />} />
             </Route>
 
+            {/* ── Super Admin ── */}
+            <Route path="/super-admin" element={<SuperAdminLayout />}>
+              <Route index element={<Navigate to="/super-admin/dashboard" replace />} />
+              <Route path="dashboard" element={<SuperAdminDashboard />} />
+              <Route path="campuses" element={<SuperAdminCampuses />} />
+              <Route path="users" element={<SuperAdminUsers />} />
+              <Route path="content" element={<SuperAdminContent />} />
+              <Route path="moderation" element={<SuperAdminModeration />} />
+              <Route path="analytics" element={<SuperAdminAnalytics />} />
+              <Route path="platform-settings" element={<SuperAdminPlatformSettings />} />
+              <Route path="audit-log" element={<SuperAdminAuditLog />} />
+            </Route>
             {/* ── Fallback ── */}
             <Route path="*" element={<NotFound />} />
           </Routes>
