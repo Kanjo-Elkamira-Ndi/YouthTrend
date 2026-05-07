@@ -5,11 +5,14 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { PostCard } from "@/components/feed/PostCard";
 import { Calendar, MapPin } from "lucide-react";
+import { InlineError } from "@/components/common/InlineError";
+import { useState } from "react";
 
 const Profile = () => {
   const { username } = useParams();
   const user = users.find((u) => u.username === username) ?? currentUser;
   const userPosts = posts.filter((p) => p.author.id === user.id);
+  const [statsError, setStatsError] = useState(false);
 
   return (
     <AppShell hideRight>
@@ -35,12 +38,18 @@ const Profile = () => {
             </div>
           </div>
 
-          <div className="mt-6 grid grid-cols-4 gap-3 max-w-lg">
-            <Stat label="Posts" value={userPosts.length} />
-            <Stat label="Followers" value={user.followers ?? 0} />
-            <Stat label="Following" value={user.following ?? 0} />
-            <Stat label="Total Claps" value={user.totalClaps ?? 0} />
-          </div>
+          {statsError ? (
+            <div className="mt-6 max-w-lg">
+              <InlineError message="Couldn't load profile stats." onRetry={() => setStatsError(false)} />
+            </div>
+          ) : (
+            <div className="mt-6 grid grid-cols-4 gap-3 max-w-lg">
+              <Stat label="Posts" value={userPosts.length} />
+              <Stat label="Followers" value={user.followers ?? 0} />
+              <Stat label="Following" value={user.following ?? 0} />
+              <Stat label="Total Claps" value={user.totalClaps ?? 0} />
+            </div>
+          )}
 
           <Tabs defaultValue="posts" className="mt-8">
             <TabsList className="bg-transparent border-b border-border rounded-none p-0 h-auto w-full justify-start">
