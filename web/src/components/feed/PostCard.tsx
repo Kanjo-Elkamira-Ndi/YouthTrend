@@ -4,6 +4,8 @@ import { Bookmark, MessageCircle, MoreHorizontal, Flame, Newspaper, Trophy, Grad
 import { Link } from "react-router-dom";
 import { CATEGORIES } from "@/lib/constants";
 import { motion } from "framer-motion";
+import { useState } from "react";
+import { cn } from "@/lib/utils";
 
 type Props = { post: Post; variant?: "compact" | "featured" };
 
@@ -20,6 +22,34 @@ const getCategoryIcon = (name: string) => {
   }
 };
 
+const BookmarkBtn = ({ className }: { className?: string }) => {
+  const [on, setOn] = useState(false);
+  return (
+    <motion.button
+      onClick={(e) => { e.preventDefault(); e.stopPropagation(); setOn((v) => !v); }}
+      whileTap={{ scale: 0.8 }}
+      animate={on ? { scale: [1, 1.25, 1] } : { scale: 1 }}
+      transition={{ duration: 0.3 }}
+      className={cn("hover:text-primary transition-colors", on && "text-primary", className)}
+      aria-label={on ? "Remove bookmark" : "Bookmark"}
+    >
+      <Bookmark className={cn("h-4 w-4", on && "fill-primary")} />
+    </motion.button>
+  );
+};
+
+const ProgressBar = () => (
+  <div className="h-0.5 w-full bg-border rounded-full overflow-hidden mt-3">
+    <motion.div
+      className="h-full bg-primary"
+      initial={{ width: 0 }}
+      whileInView={{ width: "100%" }}
+      viewport={{ once: true, amount: 0.6 }}
+      transition={{ duration: 1.4, ease: "easeOut" }}
+    />
+  </div>
+);
+
 export const PostCard = ({ post, variant = "compact" }: Props) => {
   const cat = CATEGORIES.find((c) => c.name === post.category);
   const CategoryIcon = getCategoryIcon(cat?.name || "");
@@ -29,12 +59,13 @@ export const PostCard = ({ post, variant = "compact" }: Props) => {
       <motion.article
         initial={{ opacity: 0, y: 16 }}
         animate={{ opacity: 1, y: 0 }}
+        whileHover={{ y: -2 }}
         transition={{ duration: 0.4 }}
-        className="yt-card yt-card-hover overflow-hidden"
+        className="yt-card yt-card-hover overflow-hidden group"
       >
         <Link to={`/post/${post.id}`} className="block">
           <div className="aspect-[16/8] overflow-hidden bg-muted">
-            <img src={post.cover} alt={post.title} className="h-full w-full object-cover hover:scale-[1.03] transition-transform duration-500" />
+            <img src={post.cover} alt={post.title} className="h-full w-full object-cover group-hover:scale-[1.03] transition-transform duration-500" />
           </div>
         </Link>
         <div className="p-5 space-y-3">
@@ -53,9 +84,10 @@ export const PostCard = ({ post, variant = "compact" }: Props) => {
             <div className="flex items-center gap-3 text-xs text-muted-foreground">
               <span className="inline-flex items-center gap-1"><ThumbsUp className="h-3.5 w-3.5" />{fmt(post.claps)}</span>
               <span className="inline-flex items-center gap-1"><MessageCircle className="h-3.5 w-3.5" />{post.comments}</span>
-              <button className="hover:text-primary"><Bookmark className="h-4 w-4" /></button>
+              <BookmarkBtn />
             </div>
           </div>
+          <ProgressBar />
         </div>
       </motion.article>
     );
@@ -65,8 +97,9 @@ export const PostCard = ({ post, variant = "compact" }: Props) => {
     <motion.article
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
+      whileHover={{ y: -2 }}
       transition={{ duration: 0.35 }}
-      className="yt-card yt-card-hover p-4 sm:p-5"
+      className="yt-card yt-card-hover p-4 sm:p-5 group"
     >
       <div className="flex items-center justify-between mb-3">
         <AuthorBadge user={post.author} sub={post.publishedAt} />
@@ -89,14 +122,14 @@ export const PostCard = ({ post, variant = "compact" }: Props) => {
         </div>
         <Link to={`/post/${post.id}`} className="shrink-0">
           <div className="w-28 h-28 sm:w-36 sm:h-28 rounded-lg overflow-hidden bg-muted">
-            <img src={post.cover} alt={post.title} className="h-full w-full object-cover" />
+            <img src={post.cover} alt={post.title} className="h-full w-full object-cover group-hover:scale-[1.04] transition-transform duration-500" />
           </div>
         </Link>
       </div>
       <div className="flex items-center gap-4 pt-3 mt-3 border-t border-border text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1"><ThumbsUp className="h-3.5 w-3.5" />{fmt(post.claps)}</span>
         <span className="inline-flex items-center gap-1"><MessageCircle className="h-3.5 w-3.5" />{post.comments}</span>
-        <button className="ml-auto hover:text-primary"><Bookmark className="h-4 w-4" /></button>
+        <BookmarkBtn className="ml-auto" />
       </div>
     </motion.article>
   );
