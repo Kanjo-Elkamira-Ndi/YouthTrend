@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
   LayoutDashboard,
   Users,
@@ -73,17 +74,28 @@ const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => (
           className={({ isActive }) =>
             `group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors
              ${isActive
-                ? "bg-primary/10 text-primary border-l-2 border-primary pl-[10px]"
+                ? "text-primary"
                 : "text-muted-foreground hover:bg-secondary hover:text-foreground"}`
           }
         >
-          <item.icon className={`h-4 w-4 ${item.label === "Moderation" && item.badge ? "animate-pulse" : ""}`} />
-          <span className="flex-1">{item.label}</span>
-          {item.badge ? (
-            <span className="ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold">
-              {item.badge}
-            </span>
-          ) : null}
+          {({ isActive }) => (
+            <>
+              {isActive && (
+                <motion.span
+                  layoutId="campusAdminNavIndicator"
+                  className="absolute inset-0 rounded-lg bg-primary/10 border-l-2 border-primary"
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                />
+              )}
+              <item.icon className={`relative h-4 w-4 ${item.label === "Moderation" && item.badge ? "animate-pulse" : ""}`} />
+              <span className="relative flex-1">{item.label}</span>
+              {item.badge ? (
+                <span className="relative ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full bg-red-500 text-white text-[10px] font-bold">
+                  {item.badge}
+                </span>
+              ) : null}
+            </>
+          )}
         </NavLink>
       ))}
     </nav>

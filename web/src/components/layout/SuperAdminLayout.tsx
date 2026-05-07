@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Link, NavLink, Outlet, useLocation } from "react-router-dom";
+import { motion } from "framer-motion";
 import {
   LayoutDashboard,
   Building2,
@@ -84,23 +85,34 @@ const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => (
           className={({ isActive }) =>
             `group relative flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors
              ${isActive
-                ? "bg-primary/10 text-primary border-l-2 border-primary pl-[10px]"
+                ? "text-primary"
                 : "text-slate-400 hover:bg-white/5 hover:text-slate-100"}`
           }
         >
-          <item.icon className={`h-4 w-4 ${item.label === "Global Moderation" ? "animate-pulse" : ""}`} />
-          <span className="flex-1">{item.label}</span>
-          {item.badge ? (
-            <span
-              className={`ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold ${
-                item.badgeTone === "red"
-                  ? "bg-red-500 text-white"
-                  : "bg-white/10 text-slate-200"
-              }`}
-            >
-              {item.badge}
-            </span>
-          ) : null}
+          {({ isActive }) => (
+            <>
+              {isActive && (
+                <motion.span
+                  layoutId="superAdminNavIndicator"
+                  className="absolute inset-0 rounded-lg bg-primary/10 border-l-2 border-primary"
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
+                />
+              )}
+              <item.icon className={`relative h-4 w-4 ${item.label === "Global Moderation" ? "animate-pulse" : ""}`} />
+              <span className="relative flex-1">{item.label}</span>
+              {item.badge ? (
+                <span
+                  className={`relative ml-auto inline-flex items-center justify-center min-w-[20px] h-5 px-1.5 rounded-full text-[10px] font-bold ${
+                    item.badgeTone === "red"
+                      ? "bg-red-500 text-white"
+                      : "bg-white/10 text-slate-200"
+                  }`}
+                >
+                  {item.badge}
+                </span>
+              ) : null}
+            </>
+          )}
         </NavLink>
       ))}
     </nav>

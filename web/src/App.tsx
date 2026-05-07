@@ -20,6 +20,10 @@ import Notifications  from "./pages/Notifications";
 import Settings       from "./pages/Settings";
 import Explore        from "./pages/Explore";
 import NotFound       from "./pages/NotFound";
+import ErrorPage from "./pages/ErrorPage";
+import SearchResults from "./pages/SearchResults";
+import AuthenticatedLayout from "./components/layout/AuthenticatedLayout";
+import { OnboardingModal } from "./components/common/OnboardingModal";
 
 // Campus Admin Imports
 import CampusAdminLayout from "./components/layout/CampusAdminLayout";
@@ -68,7 +72,8 @@ const App = () => (
             <Route path="/notifications"       element={<Notifications />}/>
             <Route path="/settings"            element={<Settings />}     />
             <Route path="/explore"             element={<Explore />}      />
-
+            <Route path="/search"              element={<SearchResults />} />
+            <Route path="/error" element={<ErrorPage />} />
             {/* ── Campus Admin ── */}
             <Route path="/campus-admin" element={<CampusAdminLayout />}>
               <Route index element={<Navigate to="/campus-admin/dashboard" replace />} />
