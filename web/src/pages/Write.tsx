@@ -9,10 +9,18 @@ import { ArrowLeft, Bold, Italic, Underline, Quote, List, Image as ImageIcon, Li
 import { Link } from "react-router-dom";
 import { CATEGORIES } from "@/lib/constants";
 import { useState } from "react";
+import { toast } from "@/hooks/use-toast";
 
 const Write = () => {
   const [tags, setTags] = useState<string[]>(["campus", "uy1"]);
   const [tagInput, setTagInput] = useState("");
+
+  const onPublish = () => {
+    toast({
+      title: "Post published 🎉",
+      description: "Your story is now live on your campus feed.",
+    });
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -25,7 +33,14 @@ const Write = () => {
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="sm">Save Draft</Button>
             <Button variant="outline" size="sm">Preview</Button>
-            <Button size="sm" className="bg-primary hover:bg-primary/90">Publish →</Button>
+            <Button
+              size="sm"
+              onClick={onPublish}
+              className="relative overflow-hidden bg-primary hover:bg-primary/90 group"
+            >
+              <span className="relative z-10">Publish →</span>
+              <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/30 to-transparent" />
+            </Button>
           </div>
         </div>
       </div>
