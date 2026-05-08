@@ -1,5 +1,5 @@
 {
-  "name": "server",
+  "name": "youthtrend-server",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
@@ -9,5 +9,18 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs"
+  "type": "commonjs",
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "express-rate-limit": "^8.5.1",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.3",
+    "morgan": "^1.10.1",
+    "pg": "^8.20.0",
+    "uuid": "^14.0.0",
+    "zod": "^4.4.3"
+  }
 }
