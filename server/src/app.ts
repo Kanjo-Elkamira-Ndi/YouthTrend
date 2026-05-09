@@ -2,10 +2,10 @@ import express, { Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
-import rateLimit from 'express-rate-limit';
 
 import { corsOptions }     from './config/cors';
 import { requestLogger }   from './middleware/requestLogger';
+import { defaultLimiter }  from './middleware/rateLimeter';
 import { notFoundHandler } from './middleware/notFound';
 import { errorHandler }    from './middleware/errorHandler';
 
