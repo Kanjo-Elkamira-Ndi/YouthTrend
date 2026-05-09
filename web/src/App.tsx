@@ -22,8 +22,12 @@ import Explore        from "./pages/Explore";
 import NotFound       from "./pages/NotFound";
 import ErrorPage from "./pages/ErrorPage";
 import SearchResults from "./pages/SearchResults";
+import MyPosts from "./pages/writer/MyPosts";
 import AuthenticatedLayout from "./components/layout/AuthenticatedLayout";
 import { OnboardingModal } from "./components/common/OnboardingModal";
+import WriterUpgradeRequest from "./pages/writer/WriterUpgradeRequest";
+import WriterOnboarding from "./pages/writer/WriterOnboarding";
+import PostAnalytics from "./pages/writer/PostAnalytics";
 
 // Campus Admin Imports
 import CampusAdminLayout from "./components/layout/CampusAdminLayout";
@@ -62,18 +66,27 @@ const App = () => (
             {/* /check-inbox?mode=reset  → after ForgotPassword        */}
             {/* /check-inbox?mode=verify → after SignUp                 */}
             <Route path="/check-inbox"     element={<CheckInbox />}      />
+            <Route path="/onboarding" element={<OnboardingModal />} />
 
             {/* ── Authenticated ── */}
-            <Route path="/feed"                element={<Feed />}         />
-            <Route path="/post/:id"            element={<PostView />}     />
-            <Route path="/write"               element={<Write />}        />
-            <Route path="/profile/:username"   element={<Profile />}      />
-            <Route path="/bookmarks"           element={<Bookmarks />}    />
-            <Route path="/notifications"       element={<Notifications />}/>
-            <Route path="/settings"            element={<Settings />}     />
-            <Route path="/explore"             element={<Explore />}      />
-            <Route path="/search"              element={<SearchResults />} />
-            <Route path="/error" element={<ErrorPage />} />
+            <Route element={<AuthenticatedLayout />}>
+              <Route path="/feed"                element={<Feed />}         />
+              <Route path="/post/:id"            element={<PostView />}     />
+              <Route path="/write"               element={<Write />}        />
+              <Route path="/profile/:username"   element={<Profile />}      />
+              <Route path="/bookmarks"           element={<Bookmarks />}    />
+              <Route path="/notifications"       element={<Notifications />}/>
+              <Route path="/settings"            element={<Settings />}     />
+              <Route path="/explore"             element={<Explore />}      />
+              <Route path="/search"              element={<SearchResults />} />
+              <Route path="/my-posts"            element={<MyPosts />} />
+              <Route path="/error" element={<ErrorPage />} />
+              <Route path="/writer/upgrade" element={<WriterUpgradeRequest />} />
+                <Route path="/writer/onboarding" element={<WriterOnboarding />} />
+                <Route path="/writer/analytics" element={<PostAnalytics />} />
+                <Route path="/writer/analytics/:id" element={<PostAnalytics />} />
+            </Route>
+
             {/* ── Campus Admin ── */}
             <Route path="/campus-admin" element={<CampusAdminLayout />}>
               <Route index element={<Navigate to="/campus-admin/dashboard" replace />} />

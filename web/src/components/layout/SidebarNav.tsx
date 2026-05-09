@@ -8,7 +8,7 @@ const items = [
   { to: "/explore", icon: Flame, label: "Trending" },
   { to: "/explore", icon: Compass, label: "Explore" },
   { to: "/bookmarks", icon: Bookmark, label: "Bookmarks" },
-  { to: `/profile/${currentUser.username}`, icon: FileText, label: "My Posts" },
+  { to: "/my-posts", icon: FileText, label: "My Posts" },
   { to: `/profile/${currentUser.username}`, icon: User, label: "My Profile" },
   { to: "/settings", icon: Settings, label: "Settings" },
 ];
