@@ -5,7 +5,7 @@ import cookieParser from 'cookie-parser';
 
 import { corsOptions }     from './config/cors';
 import { requestLogger }   from './middleware/requestLogger';
-import { defaultLimiter }  from './middleware/rateLimeter';
+import { defaultLimiter }  from './middleware/rateLimiter';
 import { notFoundHandler } from './middleware/notFound';
 import { errorHandler }    from './middleware/errorHandler';
 
@@ -16,7 +16,8 @@ export function createApp(): Application {
 
   app.use(helmet());
   app.use(cors(corsOptions));
-  app.options('*', cors(corsOptions));
+  // REMOVED: app.options('*', cors(corsOptions)); - This line was causing the path-to-regexp error
+  // CORS preflight requests are automatically handled by the cors() middleware above
 
   app.use(express.json({ limit: '2mb' }));
   app.use(express.urlencoded({ extended: true, limit: '2mb' }));
