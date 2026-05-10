@@ -1,197 +1,167 @@
 /**
- * Auth middleware for YouthTrend.
+ * Auth Service — YouthTrend application-layer auth logic.
  *
- * Uses Better Auth sessions (cookie or Bearer token) to identify the caller,
- * then enriches req.user with our application user record from the users table.
+ * Better Auth handles credential validation, sessions, and OAuth.
+ * This service handles everything that happens AFTER Better Auth
+ * authenticates a user:
  *
- * Two middleware functions:
- *   requireAuth    — 401 if no valid session
- *   requireRole    — 403 if the session user doesn't have an allowed role
+ *   1. Creating the application users row linked to the better_auth user
+ *   2. Assigning the campus on signup
+ *   3. Generating a unique username
  */
 
-import { Request, Response, NextFunction } from 'express';
-import { auth }            from '../../config/auth';
-import { query }           from '../../config/db';
-import { fromNodeHeaders } from 'better-auth/node';
-import {
-  UnauthorizedError,
-  ForbiddenError,
-} from '../../shared/errors/AppError';
-import { UserRole } from '../../shared/types/express';
+import { query, withTransaction } from '../../config/db';
+import { ConflictError }          from '../../shared/errors/AppError';
 
-// ── Row type returned from our users table ────────────────────────────────────
+// ── Types ─────────────────────────────────────────────────────────────────────
 
-interface UserRow {
+export interface ProvisionUserInput {
+  betterAuthId: string;
+  email:        string;
+  fullName:     string;
+  campusId?:    string;      // optional at signup — student can set later
+  avatarUrl?:   string;      // from OAuth profile photo
+}
+
+export interface AppUser {
   id:        string;
   email:     string;
-  role:      UserRole;
+  fullName:  string;
+  username:  string;
+  role:      string;
   status:    string;
-  campus_id: string | null;
-  full_name: string;
+  campusId:  string | null;
+  avatarUrl: string | null;
+  createdAt: Date;
 }
 
-// ── requireAuth ───────────────────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 /**
- * Validates the Better Auth session (cookie or Authorization: Bearer <token>).
- * On success, attaches req.user with the application user record.
- * On failure, calls next(UnauthorizedError).
+ * Generate a unique username from a full name.
+ * e.g. "Amara Ngono" → "amara.ngono" (or "amara.ngono.2" if taken)
  */
-export async function requireAuth(
-  req:  Request,
-  _res: Response,
-  next: NextFunction,
-): Promise<void> {
-  try {
-    // Better Auth validates the session from cookies or Bearer header
-    const session = await auth.api.getSession({
-      headers: fromNodeHeaders(req.headers),
-    });
+async function generateUsername(fullName: string): Promise<string> {
+  const base = fullName
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')   // strip accents
+    .replace(/[^a-z0-9\s]/g, '')
+    .trim()
+    .split(/\s+/)
+    .join('.');
 
-    if (!session?.user) {
-      return next(new UnauthorizedError('Authentication required. Please sign in.'));
-    }
+  // Check if base is available
+  const { rows } = await query(
+    'SELECT username FROM users WHERE username LIKE $1 ORDER BY username',
+    [`${base}%`],
+  );
 
-    // Fetch our application user record linked to the Better Auth user
-    const { rows } = await query<UserRow>(
-      `SELECT u.id, u.email, u.role, u.status, u.campus_id, u.full_name
-       FROM users u
-       WHERE u.better_auth_id = $1
-       LIMIT 1`,
-      [session.user.id],
-    );
+  if (rows.length === 0) return base;
 
-    if (!rows[0]) {
-      // Better Auth user exists but no application user row yet —
-      // this happens if the after-signup hook hasn't run.
-      return next(new UnauthorizedError('User account not fully set up. Please contact support.'));
-    }
+  // Find the next available suffix
+  const taken = new Set(rows.map((r) => (r as { username: string }).username));
+  if (!taken.has(base)) return base;
 
-    const user = rows[0];
-
-    // Check account status
-    if (user.status === 'banned') {
-      return next(new ForbiddenError('Your account has been banned from the platform.'));
-    }
-    if (user.status === 'suspended') {
-      return next(new ForbiddenError('Your account has been suspended. Contact your Campus Admin.'));
-    }
-
-    // Attach to request
-    req.user = {
-      id:       user.id,
-      email:    user.email,
-      role:     user.role,
-      status:   user.status as 'active' | 'suspended' | 'banned' | 'unverified',
-      campusId: user.campus_id,
-      fullName: user.full_name,
-    };
-
-    next();
-  } catch (err) {
-    next(err);
+  for (let i = 2; i <= 999; i++) {
+    const candidate = `${base}.${i}`;
+    if (!taken.has(candidate)) return candidate;
   }
+
+  // Absolute fallback — append timestamp fragment
+  return `${base}.${Date.now().toString(36)}`;
 }
 
-// ── requireRole ───────────────────────────────────────────────────────────────
+// ── Service ───────────────────────────────────────────────────────────────────
 
-/**
- * Role-based access control middleware.
- * Must be used AFTER requireAuth.
- *
- * Usage:
- *   router.delete('/post/:id', requireAuth, requireRole('campus_admin', 'super_admin'), handler)
- */
-export function requireRole(...roles: UserRole[]) {
-  return (req: Request, _res: Response, next: NextFunction): void => {
-    if (!req.user) {
-      return next(new UnauthorizedError());
-    }
-    if (!roles.includes(req.user.role)) {
-      return next(
-        new ForbiddenError(
-          `This action requires one of the following roles: ${roles.join(', ')}.`,
-        ),
+export const AuthService = {
+
+  /**
+   * Called after Better Auth creates a user (signup or first OAuth login).
+   * Creates the corresponding row in our application `users` table.
+   *
+   * Idempotent — safe to call multiple times for the same betterAuthId.
+   */
+  async provisionUser(input: ProvisionUserInput): Promise<AppUser> {
+    return withTransaction(async (client) => {
+      // Check if already provisioned
+      const existing = await client.query<AppUser>(
+        'SELECT * FROM users WHERE better_auth_id = $1 LIMIT 1',
+        [input.betterAuthId],
       );
-    }
-    next();
-  };
-}
+      if (existing.rows[0]) return existing.rows[0];
 
-// ── requireSameCampus ─────────────────────────────────────────────────────────
+      // Validate campus exists if provided
+      if (input.campusId) {
+        const campus = await client.query(
+          `SELECT id FROM campuses
+           WHERE id = $1 AND status = 'active' LIMIT 1`,
+          [input.campusId],
+        );
+        if (campus.rows.length === 0) {
+          throw new ConflictError('The selected campus does not exist or is inactive.');
+        }
+      }
 
-/**
- * Ensures the authenticated user belongs to the campus identified by
- * req.params.campusId (or req.body.campusId).
- * Super Admins bypass this check.
- *
- * Must be used AFTER requireAuth.
- */
-export function requireSameCampus(
-  req:  Request,
-  _res: Response,
-  next: NextFunction,
-): void {
-  if (!req.user) return next(new UnauthorizedError());
+      const username = await generateUsername(input.fullName);
 
-  // Super admin can act on any campus
-  if (req.user.role === 'super_admin') return next();
+      const { rows } = await client.query<AppUser>(`
+        INSERT INTO users
+          (better_auth_id, email, password_hash, full_name, username,
+           campus_id, avatar_url, role, status)
+        VALUES
+          ($1, $2, '', $3, $4, $5, $6, 'reader', 'active')
+        RETURNING *
+      `, [
+        input.betterAuthId,
+        input.email,
+        input.fullName,
+        username,
+        input.campusId ?? null,
+        input.avatarUrl ?? null,
+      ]);
 
-  const campusId =
-    (req.params.campusId as string | undefined) ??
-    (req.body?.campusId  as string | undefined);
-
-  if (!campusId) return next();   // no campus context in this route — skip
-
-  if (req.user.campusId !== campusId) {
-    return next(
-      new ForbiddenError('You do not have permission to act on this campus.'),
-    );
-  }
-
-  next();
-}
-
-// ── optionalAuth ──────────────────────────────────────────────────────────────
-
-/**
- * Like requireAuth but never rejects.
- * Sets req.user if a valid session exists, otherwise leaves it undefined.
- * Useful for routes that behave differently for logged-in vs guest users.
- */
-export async function optionalAuth(
-  req:  Request,
-  _res: Response,
-  next: NextFunction,
-): Promise<void> {
-  try {
-    const session = await auth.api.getSession({
-      headers: fromNodeHeaders(req.headers),
+      return rows[0];
     });
+  },
 
-    if (!session?.user) return next();
-
-    const { rows } = await query<UserRow>(
-      `SELECT u.id, u.email, u.role, u.status, u.campus_id, u.full_name
-       FROM users u
-       WHERE u.better_auth_id = $1
-       LIMIT 1`,
-      [session.user.id],
+  /**
+   * Look up an application user by their Better Auth user ID.
+   */
+  async findByBetterAuthId(betterAuthId: string): Promise<AppUser | null> {
+    const { rows } = await query<AppUser>(
+      'SELECT * FROM users WHERE better_auth_id = $1 LIMIT 1',
+      [betterAuthId],
     );
+    return rows[0] ?? null;
+  },
 
-    if (rows[0] && rows[0].status === 'active') {
-      req.user = {
-        id:       rows[0].id,
-        email:    rows[0].email,
-        role:     rows[0].role,
-        status:   rows[0].status as 'active',
-        campusId: rows[0].campus_id,
-        fullName: rows[0].full_name,
-      };
+  /**
+   * Look up an application user by email.
+   */
+  async findByEmail(email: string): Promise<AppUser | null> {
+    const { rows } = await query<AppUser>(
+      'SELECT * FROM users WHERE email = $1 LIMIT 1',
+      [email],
+    );
+    return rows[0] ?? null;
+  },
+
+  /**
+   * Assign or update a user's campus after signup.
+   */
+  async assignCampus(userId: string, campusId: string): Promise<void> {
+    const campus = await query(
+      `SELECT id FROM campuses WHERE id = $1 AND status = 'active' LIMIT 1`,
+      [campusId],
+    );
+    if (campus.rows.length === 0) {
+      throw new ConflictError('Campus not found or inactive.');
     }
-    next();
-  } catch {
-    // Never block the request on optional auth failure
-    next();
-  }
-}
+
+    await query(
+      'UPDATE users SET campus_id = $1, updated_at = NOW() WHERE id = $2',
+      [campusId, userId],
+    );
+  },
+};
