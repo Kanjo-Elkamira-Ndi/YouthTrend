@@ -28,7 +28,7 @@ export function createApp(): Application {
   app.use('/health',    healthRoutes);
   app.use('/api/v1',    healthRoutes);
 
-  // B3+ modules mounted here as they are built:
+  // B3+ modules will be mounted here as they are built:
   // app.use('/api/v1/auth',     authRoutes);
   // app.use('/api/v1/campuses', campusRoutes);
 
