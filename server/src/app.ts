@@ -1,37 +1,57 @@
 import express, { Application } from 'express';
-import cors from 'cors';
-import helmet from 'helmet';
+import cors        from 'cors';
+import helmet      from 'helmet';
 import cookieParser from 'cookie-parser';
+import { toNodeHandler } from 'better-auth/node';
 
 import { corsOptions }     from './config/cors';
+import { auth }            from './config/auth';
 import { requestLogger }   from './middleware/requestLogger';
 import { defaultLimiter }  from './middleware/rateLimiter';
+import { authLimiter }     from './middleware/rateLimiter';
 import { notFoundHandler } from './middleware/notFound';
 import { errorHandler }    from './middleware/errorHandler';
 
 import healthRoutes from './modules/health/health.routes';
+import authRoutes   from './modules/auth/auth.routes';
 
 export function createApp(): Application {
   const app = express();
 
+  // ── Security ────────────────────────────────────────────────────────────────
   app.use(helmet());
   app.use(cors(corsOptions));
-  // REMOVED: app.options('*', cors(corsOptions)); - This line was causing the path-to-regexp error
-  // CORS preflight requests are automatically handled by the cors() middleware above
+  app.options('/{*path}', cors(corsOptions));
 
+  // ── Body / cookies ──────────────────────────────────────────────────────────
   app.use(express.json({ limit: '2mb' }));
   app.use(express.urlencoded({ extended: true, limit: '2mb' }));
   app.use(cookieParser());
+
+  // ── Logging ─────────────────────────────────────────────────────────────────
   app.use(requestLogger);
+
+  // ── Better Auth — handles /api/auth/* ───────────────────────────────────────
+  // Must be mounted BEFORE the global rate limiter so auth endpoints
+  // can use their own stricter limiter below.
+  app.use('/api/auth', authLimiter, (req, res) => {
+    toNodeHandler(auth)(req, res);
+  });
+
+  // ── Global rate limiter for all other API routes ────────────────────────────
   app.use('/api', defaultLimiter);
 
-  app.use('/health',    healthRoutes);
-  app.use('/api/v1',    healthRoutes);
+  // ── Application routes ───────────────────────────────────────────────────────
+  app.use('/health',         healthRoutes);
+  app.use('/api/v1/health',  healthRoutes);
+  app.use('/api/v1/auth',    authRoutes);
 
-  // B3+ modules will be mounted here as they are built:
-  // app.use('/api/v1/auth',     authRoutes);
-  // app.use('/api/v1/campuses', campusRoutes);
+  // B4+ modules mounted here:
+  // app.use('/api/v1/campuses',   campusRoutes);
+  // app.use('/api/v1/users',      userRoutes);
+  // app.use('/api/v1/posts',      postRoutes);
 
+  // ── 404 + error handlers ────────────────────────────────────────────────────
   app.use(notFoundHandler);
   app.use(errorHandler);
 
