@@ -8,6 +8,17 @@ const dialect = new PostgresDialect({
   pool: new Pool({ connectionString: env.DATABASE_URL }),
 });
 
+function normalizeVerificationUrl(url: string): string {
+  const parsed = new URL(url);
+  const callbackURL = parsed.searchParams.get('callbackURL');
+
+  if (callbackURL === '/') {
+    parsed.searchParams.delete('callbackURL');
+  }
+
+  return parsed.toString();
+}
+
 type SocialProviders = Parameters<typeof betterAuth>[0]['socialProviders'];
 const socialProviders: SocialProviders = {};
 
@@ -51,7 +62,7 @@ export const auth = betterAuth({
     autoSignInAfterVerification: true,
     expiresIn:                   60 * 60 * 24,
     sendVerificationEmail: async ({ user, url }: { user: { email: string; name: string }; url: string }) => {
-      await EmailService.sendVerificationEmail({ to: user.email, name: user.name, url });
+      await EmailService.sendVerificationEmail({ to: user.email, name: user.name, url: normalizeVerificationUrl(url) });
     },
   },
 
