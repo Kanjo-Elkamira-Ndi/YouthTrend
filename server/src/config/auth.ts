@@ -40,9 +40,6 @@ export const auth = betterAuth({
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: true,
-    sendVerificationEmail: async ({ user, url }: { user: { email: string; name: string }; url: string }) => {
-      await EmailService.sendVerificationEmail({ to: user.email, name: user.name, url });
-    },
     sendResetPassword: async ({ user, url }: { user: { email: string; name: string }; url: string }) => {
       await EmailService.sendPasswordResetEmail({ to: user.email, name: user.name, url });
     },
@@ -50,8 +47,12 @@ export const auth = betterAuth({
 
   emailVerification: {
     sendOnSignUp:                true,
+    sendOnSignIn:                true,
     autoSignInAfterVerification: true,
     expiresIn:                   60 * 60 * 24,
+    sendVerificationEmail: async ({ user, url }: { user: { email: string; name: string }; url: string }) => {
+      await EmailService.sendVerificationEmail({ to: user.email, name: user.name, url });
+    },
   },
 
   socialProviders,
