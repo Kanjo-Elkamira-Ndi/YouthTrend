@@ -6,6 +6,7 @@ import { toNodeHandler } from 'better-auth/node';
 
 import { corsOptions }     from './config/cors';
 import { auth }            from './config/auth';
+import { env }             from './config/env';
 import { requestLogger }   from './middleware/requestLogger';
 import { defaultLimiter }  from './middleware/rateLimiter';
 import { authLimiter }     from './middleware/rateLimiter';
@@ -35,6 +36,10 @@ export function createApp(): Application {
   // Must be mounted BEFORE the global rate limiter so auth endpoints
   // can use their own stricter limiter below.
   app.use('/api/auth', authLimiter, (req, res) => {
+    if (env.NODE_ENV === 'development' && !req.headers.origin) {
+      req.headers.origin = new URL(env.BETTER_AUTH_URL).origin;
+    }
+
     toNodeHandler(auth)(req, res);
   });
 

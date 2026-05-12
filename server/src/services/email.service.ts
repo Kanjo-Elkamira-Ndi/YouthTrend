@@ -61,6 +61,10 @@ async function send(opts: SendOptions): Promise<void> {
     console.log(`  To:      ${message.to}`);
     console.log(`  Subject: ${message.subject}`);
     console.log(`  Body:    ${message.text?.substring(0, 300)}...`);
+    const firstUrl = message.text?.match(/https?:\/\/\S+/)?.[0];
+    if (firstUrl) {
+      console.log(`  URL:     ${firstUrl}`);
+    }
     console.log('───────────────────────────────────────────────────────────\n');
     return;
   }
