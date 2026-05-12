@@ -1,26 +1,14 @@
 -- ─────────────────────────────────────────────────────────────────────────────
 -- Better Auth Tables — run this in DBeaver if the CLI migrate doesn't work
 --
--- These use camelCase column names exactly as Better Auth's Kysely adapter
--- expects. Do NOT rename these columns to snake_case.
+-- IMPORTANT: This only creates session, account, and verification tables.
+-- We DO NOT create a 'user' table — YouthTrend already has a 'users' table.
 --
 -- Run AFTER your main migrations (001–013).
 -- Safe to run multiple times (uses IF NOT EXISTS).
 -- ─────────────────────────────────────────────────────────────────────────────
 
-CREATE TABLE IF NOT EXISTS "user" (
-  "id"            TEXT        PRIMARY KEY,
-  "name"          TEXT        NOT NULL,
-  "email"         TEXT        NOT NULL UNIQUE,
-  "emailVerified" BOOLEAN     NOT NULL DEFAULT FALSE,
-  "image"         TEXT,
-  "createdAt"     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  "updatedAt"     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-  -- YouthTrend additional fields (set via betterAuth additionalFields config)
-  "campusId"      TEXT,
-  "ytRole"        TEXT        NOT NULL DEFAULT 'reader'
-);
-
+-- Session table — stores user sessions
 CREATE TABLE IF NOT EXISTS "session" (
   "id"          TEXT        PRIMARY KEY,
   "expiresAt"   TIMESTAMPTZ NOT NULL,
@@ -29,14 +17,15 @@ CREATE TABLE IF NOT EXISTS "session" (
   "updatedAt"   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   "ipAddress"   TEXT,
   "userAgent"   TEXT,
-  "userId"      TEXT        NOT NULL REFERENCES "user"("id") ON DELETE CASCADE
+  "userId"      TEXT        NOT NULL REFERENCES "users"("id") ON DELETE CASCADE
 );
 
+-- Account table — stores OAuth provider accounts and credentials
 CREATE TABLE IF NOT EXISTS "account" (
   "id"                     TEXT PRIMARY KEY,
   "accountId"              TEXT NOT NULL,
   "providerId"             TEXT NOT NULL,
-  "userId"                 TEXT NOT NULL REFERENCES "user"("id") ON DELETE CASCADE,
+  "userId"                 TEXT NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
   "accessToken"            TEXT,
   "refreshToken"           TEXT,
   "idToken"                TEXT,
@@ -48,6 +37,7 @@ CREATE TABLE IF NOT EXISTS "account" (
   "updatedAt"              TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
+-- Verification table — stores email verification codes, password reset tokens, etc.
 CREATE TABLE IF NOT EXISTS "verification" (
   "id"          TEXT        PRIMARY KEY,
   "identifier"  TEXT        NOT NULL,
@@ -57,7 +47,7 @@ CREATE TABLE IF NOT EXISTS "verification" (
   "updatedAt"   TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
--- Indexes
+-- Indexes for performance
 CREATE INDEX IF NOT EXISTS "session_userId_idx"     ON "session" ("userId");
 CREATE INDEX IF NOT EXISTS "session_token_idx"      ON "session" ("token");
 CREATE INDEX IF NOT EXISTS "account_userId_idx"     ON "account" ("userId");
