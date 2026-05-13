@@ -1,66 +1,91 @@
 /**
- * Auth Service — YouthTrend application-layer auth logic.
+ * AuthService — application-layer auth logic.
  *
- * Better Auth handles credential validation, sessions, and OAuth.
- * This service handles everything that happens AFTER Better Auth
- * authenticates a user:
- *
- *   1. Creating the application users row linked to the better_auth user
- *   2. Assigning the campus on signup
- *   3. Generating a unique username
+ * Better Auth owns: credential validation, sessions, OAuth tokens.
+ * This service owns: provisioning the users row, campus assignment,
+ * username generation, profile updates, and user lookups.
  */
 
+import { PoolClient }             from 'pg';
 import { query, withTransaction } from '../../config/db';
-import { ConflictError }          from '../../shared/errors/AppError';
+import {
+  ConflictError,
+  NotFoundError,
+  BadRequestError,
+} from '../../shared/errors/AppError';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
-export interface ProvisionUserInput {
+export interface ProvisionInput {
   betterAuthId: string;
   email:        string;
   fullName:     string;
-  campusId?:    string;      // optional at signup — student can set later
-  avatarUrl?:   string;      // from OAuth profile photo
+  campusId?:    string;
+  avatarUrl?:   string;
+}
+
+export interface UpdateProfileInput {
+  fullName?:    string;
+  bio?:         string;
+  department?:  string;
+  yearOfStudy?: number;
+  avatarUrl?:   string;
+  matricule?:   string;
 }
 
 export interface AppUser {
-  id:        string;
-  email:     string;
-  fullName:  string;
-  username:  string;
-  role:      string;
-  status:    string;
-  campusId:  string | null;
-  avatarUrl: string | null;
-  createdAt: Date;
+  id:             string;
+  email:          string;
+  full_name:      string;
+  username:       string;
+  role:           string;
+  status:         string;
+  campus_id:      string | null;
+  avatar_url:     string | null;
+  bio:            string | null;
+  department:     string | null;
+  year_of_study:  number | null;
+  language_pref:  string;
+  matricule:      string | null;
+  better_auth_id: string;
+  created_at:     Date;
+  last_active_at: Date | null;
 }
 
-// ── Helpers ───────────────────────────────────────────────────────────────────
+export interface AppUserWithCampus extends AppUser {
+  campus_name:       string | null;
+  campus_short_code: string | null;
+  campus_slug:       string | null;
+}
 
-/**
- * Generate a unique username from a full name.
- * e.g. "Amara Ngono" → "amara.ngono" (or "amara.ngono.2" if taken)
- */
-async function generateUsername(fullName: string): Promise<string> {
+// ── Username generator ────────────────────────────────────────────────────────
+
+async function generateUsername(
+  fullName: string,
+  client?: PoolClient,
+): Promise<string> {
   const base = fullName
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')   // strip accents
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9\s]/g, '')
     .trim()
     .split(/\s+/)
     .join('.');
 
-  // Check if base is available
-  const { rows } = await query(
-    'SELECT username FROM users WHERE username LIKE $1 ORDER BY username',
+  const run = client
+    ? (sql: string, p: unknown[]) => client.query(sql, p)
+    : (sql: string, p: unknown[]) => query(sql, p);
+
+  const { rows } = await run(
+    `SELECT username FROM users WHERE username LIKE $1 ORDER BY username`,
     [`${base}%`],
   );
 
-  if (rows.length === 0) return base;
+  const taken = new Set(
+    (rows as { username: string }[]).map((r) => r.username),
+  );
 
-  // Find the next available suffix
-  const taken = new Set(rows.map((r) => (r as { username: string }).username));
   if (!taken.has(base)) return base;
 
   for (let i = 2; i <= 999; i++) {
@@ -68,7 +93,6 @@ async function generateUsername(fullName: string): Promise<string> {
     if (!taken.has(candidate)) return candidate;
   }
 
-  // Absolute fallback — append timestamp fragment
   return `${base}.${Date.now().toString(36)}`;
 }
 
@@ -77,40 +101,43 @@ async function generateUsername(fullName: string): Promise<string> {
 export const AuthService = {
 
   /**
-   * Called after Better Auth creates a user (signup or first OAuth login).
-   * Creates the corresponding row in our application `users` table.
-   *
+   * Creates an application users row linked to a Better Auth user.
    * Idempotent — safe to call multiple times for the same betterAuthId.
    */
-  async provisionUser(input: ProvisionUserInput): Promise<AppUser> {
+  async provisionUser(input: ProvisionInput): Promise<AppUserWithCampus> {
     return withTransaction(async (client) => {
-      // Check if already provisioned
-      const existing = await client.query<AppUser>(
-        'SELECT * FROM users WHERE better_auth_id = $1 LIMIT 1',
-        [input.betterAuthId],
-      );
+      // Return existing row if already provisioned
+      const existing = await client.query<AppUserWithCampus>(`
+        SELECT u.*,
+               c.name       AS campus_name,
+               c.short_code AS campus_short_code,
+               c.slug       AS campus_slug
+        FROM   users u
+        LEFT   JOIN campuses c ON c.id = u.campus_id
+        WHERE  u.better_auth_id = $1
+        LIMIT  1
+      `, [input.betterAuthId]);
+
       if (existing.rows[0]) return existing.rows[0];
 
-      // Validate campus exists if provided
+      // Validate campus if provided
       if (input.campusId) {
-        const campus = await client.query(
-          `SELECT id FROM campuses
-           WHERE id = $1 AND status = 'active' LIMIT 1`,
+        const { rows } = await client.query(
+          `SELECT id FROM campuses WHERE id = $1 AND status = 'active' LIMIT 1`,
           [input.campusId],
         );
-        if (campus.rows.length === 0) {
+        if (rows.length === 0) {
           throw new ConflictError('The selected campus does not exist or is inactive.');
         }
       }
 
-      const username = await generateUsername(input.fullName);
+      const username = await generateUsername(input.fullName, client);
 
       const { rows } = await client.query<AppUser>(`
         INSERT INTO users
           (better_auth_id, email, password_hash, full_name, username,
            campus_id, avatar_url, role, status)
-        VALUES
-          ($1, $2, '', $3, $4, $5, $6, 'reader', 'active')
+        VALUES ($1, $2, '', $3, $4, $5, $6, 'reader', 'active')
         RETURNING *
       `, [
         input.betterAuthId,
@@ -121,23 +148,58 @@ export const AuthService = {
         input.avatarUrl ?? null,
       ]);
 
-      return rows[0];
+      // Re-query with campus join for full response
+      const full = await client.query<AppUserWithCampus>(`
+        SELECT u.*,
+               c.name       AS campus_name,
+               c.short_code AS campus_short_code,
+               c.slug       AS campus_slug
+        FROM   users u
+        LEFT   JOIN campuses c ON c.id = u.campus_id
+        WHERE  u.id = $1
+        LIMIT  1
+      `, [rows[0].id]);
+
+      return full.rows[0];
     });
   },
 
   /**
-   * Look up an application user by their Better Auth user ID.
+   * Full profile with campus join — used by /me and /session.
    */
-  async findByBetterAuthId(betterAuthId: string): Promise<AppUser | null> {
-    const { rows } = await query<AppUser>(
-      'SELECT * FROM users WHERE better_auth_id = $1 LIMIT 1',
-      [betterAuthId],
-    );
+  async findByBetterAuthId(id: string): Promise<AppUserWithCampus | null> {
+    const { rows } = await query<AppUserWithCampus>(`
+      SELECT u.*,
+             c.name       AS campus_name,
+             c.short_code AS campus_short_code,
+             c.slug       AS campus_slug
+      FROM   users u
+      LEFT   JOIN campuses c ON c.id = u.campus_id
+      WHERE  u.better_auth_id = $1
+      LIMIT  1
+    `, [id]);
     return rows[0] ?? null;
   },
 
   /**
-   * Look up an application user by email.
+   * Find by application user ID (our own UUID, not Better Auth ID).
+   */
+  async findById(id: string): Promise<AppUserWithCampus | null> {
+    const { rows } = await query<AppUserWithCampus>(`
+      SELECT u.*,
+             c.name       AS campus_name,
+             c.short_code AS campus_short_code,
+             c.slug       AS campus_slug
+      FROM   users u
+      LEFT   JOIN campuses c ON c.id = u.campus_id
+      WHERE  u.id = $1
+      LIMIT  1
+    `, [id]);
+    return rows[0] ?? null;
+  },
+
+  /**
+   * Find by email address.
    */
   async findByEmail(email: string): Promise<AppUser | null> {
     const { rows } = await query<AppUser>(
@@ -148,20 +210,89 @@ export const AuthService = {
   },
 
   /**
-   * Assign or update a user's campus after signup.
+   * Update own profile fields (non-sensitive — no password or role).
+   */
+  async updateProfile(
+    userId: string,
+    input: UpdateProfileInput,
+  ): Promise<AppUserWithCampus> {
+    const sets: string[]  = [];
+    const vals: unknown[] = [];
+    let   idx             = 1;
+
+    if (input.fullName !== undefined) {
+      sets.push(`full_name = $${idx++}`); vals.push(input.fullName);
+    }
+    if (input.bio !== undefined) {
+      sets.push(`bio = $${idx++}`); vals.push(input.bio);
+    }
+    if (input.department !== undefined) {
+      sets.push(`department = $${idx++}`); vals.push(input.department);
+    }
+    if (input.yearOfStudy !== undefined) {
+      if (input.yearOfStudy < 1 || input.yearOfStudy > 10) {
+        throw new BadRequestError('Year of study must be between 1 and 10.');
+      }
+      sets.push(`year_of_study = $${idx++}`); vals.push(input.yearOfStudy);
+    }
+    if (input.avatarUrl !== undefined) {
+      sets.push(`avatar_url = $${idx++}`); vals.push(input.avatarUrl);
+    }
+    if (input.matricule !== undefined) {
+      sets.push(`matricule = $${idx++}`); vals.push(input.matricule);
+    }
+
+    if (sets.length === 0) {
+      throw new BadRequestError('No fields provided to update.');
+    }
+
+    sets.push(`updated_at = NOW()`);
+    vals.push(userId);
+
+    await query(
+      `UPDATE users SET ${sets.join(', ')} WHERE id = $${idx}`,
+      vals,
+    );
+
+    const updated = await AuthService.findById(userId);
+    if (!updated) throw new NotFoundError('User');
+    return updated;
+  },
+
+  /**
+   * Assign (or change) a user's campus.
    */
   async assignCampus(userId: string, campusId: string): Promise<void> {
-    const campus = await query(
+    const { rows } = await query(
       `SELECT id FROM campuses WHERE id = $1 AND status = 'active' LIMIT 1`,
       [campusId],
     );
-    if (campus.rows.length === 0) {
-      throw new ConflictError('Campus not found or inactive.');
-    }
+    if (rows.length === 0) throw new NotFoundError('Campus');
 
     await query(
-      'UPDATE users SET campus_id = $1, updated_at = NOW() WHERE id = $2',
+      `UPDATE users SET campus_id = $1, updated_at = NOW() WHERE id = $2`,
       [campusId, userId],
+    );
+  },
+
+  /**
+   * Update language preference.
+   */
+  async setLanguage(userId: string, lang: 'en' | 'fr'): Promise<void> {
+    await query(
+      `UPDATE users SET language_pref = $1, updated_at = NOW() WHERE id = $2`,
+      [lang, userId],
+    );
+  },
+
+  /**
+   * Touch last_active_at — called on authenticated requests.
+   * Fire-and-forget — never awaited by callers.
+   */
+  async touchActivity(userId: string): Promise<void> {
+    await query(
+      `UPDATE users SET last_active_at = NOW() WHERE id = $1`,
+      [userId],
     );
   },
 };
