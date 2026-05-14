@@ -18,6 +18,7 @@ import authRoutes from './modules/auth/auth.routes';
 import campusRoutes from './modules/campus/campus.routes';
 import usersRoutes from './modules/users/users.routes';
 import postsRoutes from './modules/posts/posts.routes';
+import commentsRoutes from './modules/comments/comments.routes';
 
 export function createApp(): Application {
   const app = express();
@@ -56,6 +57,7 @@ export function createApp(): Application {
   app.use('/api/v1/campuses', campusRoutes);
   app.use('/api/v1/users', usersRoutes);
   app.use('/api/v1/posts', postsRoutes);
+  app.use('/api/v1', commentsRoutes);
 
   // ── 404 + error handlers ────────────────────────────────────────────────────
   app.use(notFoundHandler);
