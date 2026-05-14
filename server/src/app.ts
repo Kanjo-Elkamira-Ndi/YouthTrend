@@ -17,6 +17,7 @@ import healthRoutes from './modules/health/health.routes';
 import authRoutes from './modules/auth/auth.routes';
 import campusRoutes from './modules/campus/campus.routes';
 import usersRoutes from './modules/users/users.routes';
+import postsRoutes from './modules/posts/posts.routes';
 
 export function createApp(): Application {
   const app = express();
@@ -54,9 +55,7 @@ export function createApp(): Application {
   app.use('/api/v1/auth', authRoutes);
   app.use('/api/v1/campuses', campusRoutes);
   app.use('/api/v1/users', usersRoutes);
-
-  // B5+ modules mounted here:
-  // app.use('/api/v1/posts', postRoutes);
+  app.use('/api/v1/posts', postsRoutes);
 
   // ── 404 + error handlers ────────────────────────────────────────────────────
   app.use(notFoundHandler);
