@@ -21,6 +21,7 @@ import {
   buildMeta,
   PaginationMeta,
 } from '../../shared/utils/response';
+import { NotificationService } from '../notifications/notifications.service';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -127,10 +128,19 @@ export const UsersService = {
     if (!rows[0]) throw new NotFoundError('User');
 
     try {
-      await query(
+      await withTransaction(async (client) => {
+        await client.query(
         `INSERT INTO follows (follower_id, following_id) VALUES ($1, $2)`,
         [followerId, followingId],
-      );
+        );
+
+        await NotificationService.createNotification(followingId, 'follow', {
+          actorId:    followerId,
+          targetType: 'user',
+          targetId:   followerId,
+          message:    'Someone followed you.',
+        }, client);
+      });
     } catch (err: unknown) {
       const pg = err as { code?: string };
       if (pg.code === '23505') {

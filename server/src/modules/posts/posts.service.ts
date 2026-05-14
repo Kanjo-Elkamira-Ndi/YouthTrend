@@ -16,6 +16,7 @@
 
 import * as crypto                from 'crypto';
 import { query, withTransaction } from '../../config/db';
+import { NotificationService }    from '../notifications/notifications.service';
 import {
   NotFoundError,
   ForbiddenError,
@@ -593,8 +594,8 @@ export const PostsService = {
     }
 
     // Verify post exists and is published
-    const { rows } = await query<{ id: string; clap_count: number }>(
-      `SELECT id, clap_count FROM posts WHERE id = $1 AND status = 'published' LIMIT 1`,
+    const { rows } = await query<{ id: string; author_id: string; clap_count: number }>(
+      `SELECT id, author_id, clap_count FROM posts WHERE id = $1 AND status = 'published' LIMIT 1`,
       [postId],
     );
     if (!rows[0]) throw new NotFoundError('Post');
@@ -647,6 +648,15 @@ export const PostsService = {
         `UPDATE posts SET clap_count = clap_count + $1 WHERE id = $2`,
         [clampedCount, postId],
       );
+
+      if (rows[0].author_id !== userId) {
+        await NotificationService.createNotification(rows[0].author_id, 'clap', {
+          actorId:    userId,
+          targetType: 'post',
+          targetId:   postId,
+          message:    'Someone clapped for your post.',
+        }, client);
+      }
 
       const { rows: updated } = await client.query<{ clap_count: number }>(
         `SELECT clap_count FROM posts WHERE id = $1`,

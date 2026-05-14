@@ -8,6 +8,7 @@ import { buildMeta, PaginationMeta, parsePagination } from '../../shared/utils/r
 import { BadRequestError, ForbiddenError, NotFoundError } from '../../shared/errors/AppError';
 import { CommentFull, CommentThread } from '../../shared/types/comment';
 import { UserRole } from '../../shared/types/express';
+import { NotificationService } from '../notifications/notifications.service';
 
 const COMMENT_SELECT = `
   c.id,          c.post_id,       c.author_id,
@@ -102,9 +103,15 @@ export const CommentsService = {
 
       if (!posts[0]) throw new NotFoundError('Post');
 
+      let replyRecipientId: string | null = null;
+
       if (opts.parentId) {
-        const { rows: parents } = await client.query<{ id: string; parent_id: string | null }>(`
-          SELECT id, parent_id
+        const { rows: parents } = await client.query<{
+          id: string;
+          author_id: string;
+          parent_id: string | null;
+        }>(`
+          SELECT id, author_id, parent_id
           FROM comments
           WHERE id = $1
             AND post_id = $2
@@ -119,6 +126,8 @@ export const CommentsService = {
         if (parents[0].parent_id) {
           throw new BadRequestError('Replies can only be one level deep.');
         }
+
+        replyRecipientId = parents[0].author_id;
       }
 
       const { rows } = await client.query<{ id: string }>(`
@@ -137,21 +146,20 @@ export const CommentsService = {
         [opts.postId],
       );
 
-      if (posts[0].author_id !== opts.authorId) {
-        await client.query(`
-          INSERT INTO notifications
-            (user_id, type, actor_id, target_type, target_id, message)
-          VALUES
-            ($1, $2, $3, 'comment', $4, $5)
-        `, [
-          posts[0].author_id,
-          opts.parentId ? 'comment_reply' : 'comment',
-          opts.authorId,
-          rows[0].id,
-          opts.parentId
-            ? 'Someone replied in the comments on your post.'
-            : 'Someone commented on your post.',
-        ]);
+      if (opts.parentId && replyRecipientId) {
+        await NotificationService.createNotification(replyRecipientId, 'comment_reply', {
+          actorId:    opts.authorId,
+          targetType: 'comment',
+          targetId:   rows[0].id,
+          message:    'Someone replied to your comment.',
+        }, client);
+      } else {
+        await NotificationService.createNotification(posts[0].author_id, 'comment', {
+          actorId:    opts.authorId,
+          targetType: 'comment',
+          targetId:   rows[0].id,
+          message:    'Someone commented on your post.',
+        }, client);
       }
 
       const created = await CommentsService.findById(rows[0].id, client);
