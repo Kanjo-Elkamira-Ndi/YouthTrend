@@ -15,6 +15,7 @@ import { errorHandler }    from './middleware/errorHandler';
 
 import healthRoutes from './modules/health/health.routes';
 import authRoutes   from './modules/auth/auth.routes';
+import campusRoutes from './modules/campus/campus.routes';
 
 export function createApp(): Application {
   const app = express();
@@ -47,14 +48,14 @@ export function createApp(): Application {
   app.use('/api', defaultLimiter);
 
   // ── Application routes ───────────────────────────────────────────────────────
-  app.use('/health',         healthRoutes);
-  app.use('/api/v1/health',  healthRoutes);
-  app.use('/api/v1/auth',    authRoutes);
+  app.use('/health',          healthRoutes);
+  app.use('/api/v1/health',   healthRoutes);
+  app.use('/api/v1/auth',     authRoutes);
+  app.use('/api/v1/campuses', campusRoutes);
 
-  // B4+ modules mounted here:
-  // app.use('/api/v1/campuses',   campusRoutes);
-  // app.use('/api/v1/users',      userRoutes);
-  // app.use('/api/v1/posts',      postRoutes);
+  // B5+ modules mounted here:
+  // app.use('/api/v1/users',  userRoutes);
+  // app.use('/api/v1/posts',  postRoutes);
 
   // ── 404 + error handlers ────────────────────────────────────────────────────
   app.use(notFoundHandler);
