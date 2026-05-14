@@ -15,11 +15,13 @@
 import { Pool, PoolClient } from 'pg';
 import bcrypt from 'bcryptjs';
 import dotenv from 'dotenv';
+import { randomBytes, randomUUID, scrypt as scryptCallback } from 'crypto';
 
 dotenv.config();
 
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 const HASH = bcrypt.hashSync('Password123!', 10);   // all seed users share this password
+const PASSWORD = 'Password123!';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -29,6 +31,80 @@ function slug(name: string): string {
 
 function username(name: string, suffix = ''): string {
   return slug(name).replace(/-/g, '.') + suffix;
+}
+
+async function hashBetterAuthPassword(password: string): Promise<string> {
+  const salt = randomBytes(16).toString('hex');
+  const key = await new Promise<Buffer>((resolve, reject) => {
+    scryptCallback(password.normalize('NFKC'), salt, 64, {
+      N:      16384,
+      r:      16,
+      p:      1,
+      maxmem: 128 * 16384 * 16 * 2,
+    }, (err, derivedKey) => {
+      if (err) return reject(err);
+      resolve(derivedKey);
+    });
+  });
+
+  return `${salt}:${key.toString('hex')}`;
+}
+
+async function upsertBetterAuthCredentialUser(
+  client: PoolClient,
+  input: {
+    email:    string;
+    name:     string;
+    password: string;
+    role:     'super_admin' | 'campus_admin';
+    campusId?: string | null;
+  },
+): Promise<string> {
+  const authUserId = randomUUID();
+  const now = new Date();
+
+  const { rows: [authUser] } = await client.query<{ id: string }>(`
+    INSERT INTO "user"
+      ("id", "name", "email", "emailVerified", "createdAt", "updatedAt", "campusId", "ytRole")
+    VALUES
+      ($1, $2, LOWER($3), TRUE, $4, $4, $5, $6)
+    ON CONFLICT ("email") DO UPDATE SET
+      "name"          = EXCLUDED."name",
+      "emailVerified" = TRUE,
+      "updatedAt"     = EXCLUDED."updatedAt",
+      "campusId"      = EXCLUDED."campusId",
+      "ytRole"        = EXCLUDED."ytRole"
+    RETURNING "id"
+  `, [
+    authUserId,
+    input.name,
+    input.email,
+    now,
+    input.campusId ?? null,
+    input.role,
+  ]);
+
+  const passwordHash = await hashBetterAuthPassword(input.password);
+
+  await client.query(`
+    DELETE FROM "account"
+    WHERE "userId" = $1
+      AND "providerId" = 'credential'
+  `, [authUser.id]);
+
+  await client.query(`
+    INSERT INTO "account"
+      ("id", "accountId", "providerId", "userId", "password", "createdAt", "updatedAt")
+    VALUES
+      ($1, $2, 'credential', $2, $3, $4, $4)
+  `, [
+    randomUUID(),
+    authUser.id,
+    passwordHash,
+    now,
+  ]);
+
+  return authUser.id;
 }
 
 // ── Data ─────────────────────────────────────────────────────────────────────
@@ -171,16 +247,24 @@ async function seed(client: PoolClient): Promise<void> {
 
   // ── Super admin ───────────────────────────────────────────────────────────
   console.log('  Creating super admin...');
+  const superAdminAuthId = await upsertBetterAuthCredentialUser(client, {
+    email:    'jordan@youthtrend.cm',
+    name:     'Jordan Ndi',
+    password: PASSWORD,
+    role:     'super_admin',
+  });
+
   const { rows: [superAdmin] } = await client.query<{ id: string }>(`
     INSERT INTO users
-      (email, password_hash, full_name, username, role, status)
+      (email, password_hash, full_name, username, role, status, better_auth_id)
     VALUES
-      ($1, $2, $3, $4, 'super_admin', 'active')
+      ($1, $2, $3, $4, 'super_admin', 'active', $5)
     ON CONFLICT (email) DO UPDATE SET
       password_hash = EXCLUDED.password_hash,
-      status        = 'active'
+      status        = 'active',
+      better_auth_id = EXCLUDED.better_auth_id
     RETURNING id
-  `, ['jordan@youthtrend.cm', HASH, 'Jordan Ndi', 'jordan.ndi']);
+  `, ['jordan@youthtrend.cm', HASH, 'Jordan Ndi', 'jordan.ndi', superAdminAuthId]);
 
   console.log(`    Super admin id: ${superAdmin.id}`);
 
@@ -200,11 +284,22 @@ async function seed(client: PoolClient): Promise<void> {
     const cu = CAMPUS_USERS[campus.short_code];
 
     // Campus admin
+    const campusAdminAuthId = await upsertBetterAuthCredentialUser(client, {
+      email:    cu.admin.email,
+      name:     cu.admin.name,
+      password: PASSWORD,
+      role:     'campus_admin',
+      campusId,
+    });
+
     const { rows: [caRow] } = await client.query<{ id: string }>(`
-      INSERT INTO users (campus_id, email, password_hash, full_name, username, role, status)
-      VALUES ($1, $2, $3, $4, $5, 'campus_admin', 'active') RETURNING id
+      INSERT INTO users
+        (campus_id, email, password_hash, full_name, username, role, status, better_auth_id)
+      VALUES
+        ($1, $2, $3, $4, $5, 'campus_admin', 'active', $6)
+      RETURNING id
     `, [campusId, cu.admin.email, HASH, cu.admin.name,
-        username(cu.admin.name, '.ca')]);
+        username(cu.admin.name, '.ca'), campusAdminAuthId]);
     console.log(`    Campus admin: ${cu.admin.name}`);
 
     // Moderator
@@ -332,8 +427,12 @@ async function run(): Promise<void> {
     await seed(client);
     await client.query('COMMIT');
     console.log('\n  Seed completed successfully.\n');
-    console.log('  All seed users share the password: Password123!\n');
+    console.log('  All app seed users share the password: Password123!');
     console.log('  Super admin login: jordan@youthtrend.cm / Password123!\n');
+    console.log('  Campus admin logins:');
+    console.log('    celestine.mbarga@uy1.cm / Password123!');
+    console.log('    viviane.ndoumbe@ubuea.cm / Password123!');
+    console.log('    sandrine.owono@iubs.cm / Password123!\n');
   } catch (err) {
     await client.query('ROLLBACK');
     throw err;
