@@ -2,6 +2,7 @@
  * CommentsService — post comments, one-level replies, and comment notifications.
  */
 
+import { PoolClient } from 'pg';
 import { query, withTransaction } from '../../config/db';
 import { buildMeta, PaginationMeta, parsePagination } from '../../shared/utils/response';
 import { BadRequestError, ForbiddenError, NotFoundError } from '../../shared/errors/AppError';
@@ -153,7 +154,7 @@ export const CommentsService = {
         ]);
       }
 
-      const created = await CommentsService.findById(rows[0].id);
+      const created = await CommentsService.findById(rows[0].id, client);
       if (!created) throw new NotFoundError('Comment');
       return created;
     });
@@ -232,8 +233,12 @@ export const CommentsService = {
     });
   },
 
-  async findById(commentId: string): Promise<CommentFull | null> {
-    const { rows } = await query<CommentFull>(`
+  async findById(commentId: string, client?: PoolClient): Promise<CommentFull | null> {
+    const run = client
+      ? (sql: string, params: unknown[]) => client.query<CommentFull>(sql, params)
+      : (sql: string, params: unknown[]) => query<CommentFull>(sql, params);
+
+    const { rows } = await run(`
       SELECT ${COMMENT_SELECT}
       FROM comments c
       JOIN users u ON u.id = c.author_id
