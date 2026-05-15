@@ -3,6 +3,7 @@ import * as path        from 'path';
 import { createApp }    from './app';
 import { env }          from './config/env';
 import { pool, pingDb } from './config/db';
+import { PostsService } from './modules/posts/posts.service';
 
 async function bootstrap(): Promise<void> {
   console.log('\n[YouthTrend] Starting server...');
@@ -25,19 +26,36 @@ async function bootstrap(): Promise<void> {
   try {
     const scriptPath = path.join(__dirname, 'db', 'run-better-auth-migrations.mjs');
     execSync(`node "${scriptPath}"`, {
-      stdio:  'inherit',
-      env:    process.env,
+      stdio:   'inherit',
+      env:     process.env,
       timeout: 30_000,
     });
     console.log('[YouthTrend] ✓  Better Auth schema synced.');
-  } catch (err) {
+  } catch {
     // If the script exits 1 it already logged the error — just warn here.
     console.warn('[YouthTrend] ⚠  Better Auth schema sync failed (see above).');
     console.warn('[YouthTrend]    Manually run: node src/db/run-better-auth-migrations.mjs');
     console.warn('[YouthTrend]    Or paste src/db/better-auth-schema.sql into DBeaver.\n');
   }
 
-  // ── 3. Start Express ───────────────────────────────────────────────────────
+  // ── 3. Scheduled post processor ───────────────────────────────────────────
+  // Runs every 60 seconds, publishes posts whose scheduled_at has passed.
+  const runScheduledProcessor = async () => {
+    try {
+      const published = await PostsService.processScheduledPosts();
+      if (published > 0) {
+        console.log(`[YouthTrend] ✓  Published ${published} scheduled post(s).`);
+      }
+    } catch (err) {
+      console.error('[YouthTrend] Scheduled post processor error:', (err as Error).message);
+    }
+  };
+
+  // Run immediately on startup, then every 60 seconds
+  await runScheduledProcessor();
+  const schedulerInterval = setInterval(runScheduledProcessor, 60_000);
+
+  // ── 4. Start Express ───────────────────────────────────────────────────────
   const app    = createApp();
   const server = app.listen(env.PORT, () => {
     console.log(`[YouthTrend] ✓  Server: http://localhost:${env.PORT}`);
@@ -46,9 +64,10 @@ async function bootstrap(): Promise<void> {
     console.log(`[YouthTrend] ✓  API:    http://localhost:${env.PORT}/api/v1\n`);
   });
 
-  // ── 4. Graceful shutdown ───────────────────────────────────────────────────
+  // ── 5. Graceful shutdown ───────────────────────────────────────────────────
   const shutdown = async (signal: string): Promise<void> => {
     console.log(`\n[YouthTrend] ${signal} — shutting down gracefully...`);
+    clearInterval(schedulerInterval);
     server.close(async () => {
       await pool.end();
       console.log('[YouthTrend] Goodbye. 👋');
