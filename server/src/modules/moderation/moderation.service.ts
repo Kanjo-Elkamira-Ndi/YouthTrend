@@ -23,7 +23,7 @@ import {
   BadRequestError,
 } from '../../shared/errors/AppError';
 import { parsePagination, buildMeta, PaginationMeta } from '../../shared/utils/response';
-import { NotificationsService }     from '../notifications/notifications.service';
+import { NotificationService }     from '../notifications/notifications.service';
 import { writeAuditLog }            from '../../shared/utils/audit';
 
 export type ReportReason =
