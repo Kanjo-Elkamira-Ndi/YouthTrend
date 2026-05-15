@@ -23,7 +23,7 @@ import {
   BadRequestError,
 } from '../../shared/errors/AppError';
 import { parsePagination, buildMeta, PaginationMeta } from '../../shared/utils/response';
-import { notificationService} from '../notifications/notifications.service';
+import { NotificationService } from '../notifications/notifications.service';
 import { writeAuditLog }            from '../../shared/utils/audit';
 
 export type ReportReason =
@@ -58,6 +58,18 @@ export interface ReportRow {
   campus_name?:       string | null;
 }
 
+interface PostResult {
+  id: string;
+  author_id: string;
+  title: string;
+  campus_id: string;
+}
+
+interface CommentResult {
+  id: string;
+  author_id: string;
+}
+
 export const ModerationService = {
 
   // ── File a report ─────────────────────────────────────────────────────────
@@ -69,24 +81,28 @@ export const ModerationService = {
     reason:      ReportReason;
     description?: string;
   }): Promise<ReportRow> {
-    // Verify target exists
+    // Verify target exists and get author info
+    let targetAuthorId: string | null = null;
+    
     if (opts.targetType === 'post') {
-      const { rows } = await query(
-        `SELECT id FROM posts WHERE id = $1 AND status = 'published' LIMIT 1`,
+      const result = await query<PostResult>(
+        `SELECT id, author_id FROM posts WHERE id = $1 AND status = 'published' LIMIT 1`,
         [opts.targetId],
       );
-      if (!rows[0]) throw new NotFoundError('Post');
+      if (!result.rows[0]) throw new NotFoundError('Post');
+      targetAuthorId = result.rows[0].author_id;
     } else {
-      const { rows } = await query(
-        `SELECT id FROM comments WHERE id = $1 AND status = 'visible' LIMIT 1`,
+      const result = await query<CommentResult>(
+        `SELECT id, author_id FROM comments WHERE id = $1 AND status = 'visible' LIMIT 1`,
         [opts.targetId],
       );
-      if (!rows[0]) throw new NotFoundError('Comment');
+      if (!result.rows[0]) throw new NotFoundError('Comment');
+      targetAuthorId = result.rows[0].author_id;
     }
 
     // Prevent duplicate reports
     try {
-      const { rows } = await query<ReportRow>(`
+      const result = await query<ReportRow>(`
         INSERT INTO reports
           (reporter_id, campus_id, target_type, target_id, reason, description)
         VALUES ($1, $2, $3, $4, $5, $6)
@@ -99,7 +115,12 @@ export const ModerationService = {
         opts.reason,
         opts.description ?? null,
       ]);
-      return rows[0];
+      
+      // Add target_author_id to the returned row for notification purposes
+      const reportRow = result.rows[0];
+      (reportRow as any).target_author_id = targetAuthorId;
+      
+      return reportRow;
     } catch (err: unknown) {
       const pg = err as { code?: string };
       if (pg.code === '23505') {
@@ -130,12 +151,12 @@ export const ModerationService = {
 
     const where = `WHERE ${conditions.join(' AND ')}`;
 
-    const { rows: total } = await query<{ count: string }>(
+    const totalResult = await query<{ count: string }>(
       `SELECT COUNT(*)::text AS count FROM reports r ${where}`,
       params,
     );
 
-    const { rows } = await query<ReportRow>(`
+    const result = await query<ReportRow>(`
       SELECT
         r.*,
         reporter.full_name  AS reporter_name,
@@ -167,8 +188,8 @@ export const ModerationService = {
     `, [...params, perPage, offset]);
 
     return {
-      data: rows,
-      meta: buildMeta(page, perPage, parseInt(total[0]?.count ?? '0', 10)),
+      data: result.rows,
+      meta: buildMeta(page, perPage, parseInt(totalResult.rows[0]?.count ?? '0', 10)),
     };
   },
 
@@ -198,12 +219,12 @@ export const ModerationService = {
 
     const where = conditions.length ? `WHERE ${conditions.join(' AND ')}` : '';
 
-    const { rows: total } = await query<{ count: string }>(
+    const totalResult = await query<{ count: string }>(
       `SELECT COUNT(*)::text AS count FROM reports r ${where}`,
       params,
     );
 
-    const { rows } = await query<ReportRow>(`
+    const result = await query<ReportRow>(`
       SELECT
         r.*,
         reporter.full_name AS reporter_name,
@@ -230,8 +251,8 @@ export const ModerationService = {
     `, [...params, perPage, offset]);
 
     return {
-      data: rows,
-      meta: buildMeta(page, perPage, parseInt(total[0]?.count ?? '0', 10)),
+      data: result.rows,
+      meta: buildMeta(page, perPage, parseInt(totalResult.rows[0]?.count ?? '0', 10)),
     };
   },
 
@@ -244,15 +265,38 @@ export const ModerationService = {
     action:        'take_down' | 'dismiss' | 'escalate';
     moderatorNote?: string;
   }): Promise<ReportRow> {
-    const { rows } = await query<ReportRow>(
+    const reportResult = await query<ReportRow>(
       `SELECT * FROM reports WHERE id = $1 AND campus_id = $2 LIMIT 1`,
       [opts.reportId, opts.campusId],
     );
-    if (!rows[0]) throw new NotFoundError('Report');
+    if (!reportResult.rows[0]) throw new NotFoundError('Report');
 
-    const report = rows[0];
+    const report = reportResult.rows[0];
     if (report.status !== 'pending') {
       throw new BadRequestError(`Report has already been ${report.status}.`);
+    }
+
+    // Get target author info for notification
+    let targetAuthorId: string | null = null;
+    let targetTitle: string | null = null;
+    
+    if (report.target_type === 'post') {
+      const postResult = await query<PostResult>(
+        `SELECT author_id, title FROM posts WHERE id = $1 LIMIT 1`,
+        [report.target_id],
+      );
+      if (postResult.rows[0]) {
+        targetAuthorId = postResult.rows[0].author_id;
+        targetTitle = postResult.rows[0].title;
+      }
+    } else {
+      const commentResult = await query<CommentResult>(
+        `SELECT author_id FROM comments WHERE id = $1 LIMIT 1`,
+        [report.target_id],
+      );
+      if (commentResult.rows[0]) {
+        targetAuthorId = commentResult.rows[0].author_id;
+      }
     }
 
     return withTransaction(async (client) => {
@@ -284,16 +328,23 @@ export const ModerationService = {
           );
         }
 
-        // Notify the content author
-        if (report.target_author_id) {
-          NotificationsService.create({
-            userId:      report.target_author_id,
-            type:        'post_taken_down',
-            actorId:     opts.actorId,
-            targetType:  report.target_type,
-            targetId:    report.target_id,
-            message:     `Your ${report.target_type} has been taken down by a campus moderator.`,
-          }).catch(() => {});
+        // Notify the content author using NotificationService
+        if (targetAuthorId && targetAuthorId !== opts.actorId) {
+          const message = targetTitle 
+            ? `Your post "${targetTitle}" has been taken down by a campus moderator.`
+            : `Your ${report.target_type} has been taken down by a campus moderator.`;
+          
+          await NotificationService.createNotification(
+            targetAuthorId,
+            'post_taken_down',
+            {
+              actorId: opts.actorId,
+              targetType: report.target_type,
+              targetId: report.target_id,
+              message,
+            },
+            client
+          );
         }
       }
 
@@ -311,11 +362,11 @@ export const ModerationService = {
         },
       });
 
-      const { rows: updated } = await client.query<ReportRow>(
+      const updatedResult = await client.query<ReportRow>(
         `SELECT * FROM reports WHERE id = $1`,
         [opts.reportId],
       );
-      return updated[0];
+      return updatedResult.rows[0];
     });
   },
 
@@ -326,13 +377,36 @@ export const ModerationService = {
     action:         'take_down_platform' | 'return_to_campus' | 'dismiss';
     moderatorNote?: string;
   }): Promise<ReportRow> {
-    const { rows } = await query<ReportRow>(
+    const reportResult = await query<ReportRow>(
       `SELECT * FROM reports WHERE id = $1 LIMIT 1`,
       [opts.reportId],
     );
-    if (!rows[0]) throw new NotFoundError('Report');
+    if (!reportResult.rows[0]) throw new NotFoundError('Report');
 
-    const report = rows[0];
+    const report = reportResult.rows[0];
+    
+    // Get target author info for notification
+    let targetAuthorId: string | null = null;
+    let targetTitle: string | null = null;
+    
+    if (report.target_type === 'post') {
+      const postResult = await query<PostResult>(
+        `SELECT author_id, title FROM posts WHERE id = $1 LIMIT 1`,
+        [report.target_id],
+      );
+      if (postResult.rows[0]) {
+        targetAuthorId = postResult.rows[0].author_id;
+        targetTitle = postResult.rows[0].title;
+      }
+    } else {
+      const commentResult = await query<CommentResult>(
+        `SELECT author_id FROM comments WHERE id = $1 LIMIT 1`,
+        [report.target_id],
+      );
+      if (commentResult.rows[0]) {
+        targetAuthorId = commentResult.rows[0].author_id;
+      }
+    }
 
     return withTransaction(async (client) => {
       let newStatus: ReportStatus;
@@ -352,15 +426,23 @@ export const ModerationService = {
           );
         }
 
-        if (report.target_author_id) {
-          NotificationsService.create({
-            userId:      report.target_author_id,
-            type:        'post_taken_down',
-            actorId:     opts.actorId,
-            targetType:  report.target_type,
-            targetId:    report.target_id,
-            message:     `Your ${report.target_type} has been taken down by the platform.`,
-          }).catch(() => {});
+        // Notify the content author using NotificationService
+        if (targetAuthorId && targetAuthorId !== opts.actorId) {
+          const message = targetTitle
+            ? `Your post "${targetTitle}" has been taken down by the platform.`
+            : `Your ${report.target_type} has been taken down by the platform.`;
+          
+          await NotificationService.createNotification(
+            targetAuthorId,
+            'post_taken_down',
+            {
+              actorId: opts.actorId,
+              targetType: report.target_type,
+              targetId: report.target_id,
+              message,
+            },
+            client
+          );
         }
       } else if (opts.action === 'return_to_campus') {
         newStatus = 'pending'; // back to campus queue
@@ -388,11 +470,11 @@ export const ModerationService = {
         meta:       { targetType: report.target_type, targetId: report.target_id },
       });
 
-      const { rows: updated } = await client.query<ReportRow>(
+      const updatedResult = await client.query<ReportRow>(
         `SELECT * FROM reports WHERE id = $1`,
         [opts.reportId],
       );
-      return updated[0];
+      return updatedResult.rows[0];
     });
   },
 
@@ -406,22 +488,22 @@ export const ModerationService = {
   }): Promise<void> {
     // Max 5 pinned per campus
     if (opts.pinned) {
-      const { rows } = await query<{ count: string }>(
+      const countResult = await query<{ count: string }>(
         `SELECT COUNT(*)::text AS count
          FROM posts WHERE campus_id = $1 AND is_pinned = TRUE`,
         [opts.campusId],
       );
-      if (parseInt(rows[0]?.count ?? '0', 10) >= 5) {
+      if (parseInt(countResult.rows[0]?.count ?? '0', 10) >= 5) {
         throw new BadRequestError('Maximum 5 posts can be pinned per campus.');
       }
     }
 
-    const { rows } = await query(
-      `SELECT id, campus_id FROM posts WHERE id = $1 AND status = 'published' LIMIT 1`,
+    const postResult = await query<PostResult>(
+      `SELECT id, campus_id, author_id, title FROM posts WHERE id = $1 AND status = 'published' LIMIT 1`,
       [opts.postId],
     );
-    if (!rows[0]) throw new NotFoundError('Post');
-    if ((rows[0] as { campus_id: string }).campus_id !== opts.campusId) {
+    if (!postResult.rows[0]) throw new NotFoundError('Post');
+    if (postResult.rows[0].campus_id !== opts.campusId) {
       throw new NotFoundError('Post');
     }
 
@@ -429,6 +511,23 @@ export const ModerationService = {
       `UPDATE posts SET is_pinned = $1 WHERE id = $2`,
       [opts.pinned, opts.postId],
     );
+
+    // Notify author when post is pinned
+    if (opts.pinned) {
+      const post = postResult.rows[0];
+      if (post.author_id !== opts.actorId) {
+        await NotificationService.createNotification(
+          post.author_id,
+          'post_pinned',
+          {
+            actorId: opts.actorId,
+            targetType: 'post',
+            targetId: opts.postId,
+            message: `Your post "${post.title}" has been pinned by a campus admin.`,
+          }
+        );
+      }
+    }
 
     writeAuditLog({
       actorId:    opts.actorId,
@@ -448,12 +547,12 @@ export const ModerationService = {
     actorRole: string;
     note?:     string;
   }): Promise<void> {
-    const { rows } = await query<{ author_id: string; campus_id: string; title: string }>(
+    const postResult = await query<PostResult>(
       `SELECT author_id, campus_id, title FROM posts WHERE id = $1 LIMIT 1`,
       [opts.postId],
     );
-    if (!rows[0]) throw new NotFoundError('Post');
-    if (opts.actorRole !== 'super_admin' && rows[0].campus_id !== opts.campusId) {
+    if (!postResult.rows[0]) throw new NotFoundError('Post');
+    if (opts.actorRole !== 'super_admin' && postResult.rows[0].campus_id !== opts.campusId) {
       throw new NotFoundError('Post');
     }
 
@@ -462,14 +561,20 @@ export const ModerationService = {
       [opts.postId],
     );
 
-    NotificationsService.create({
-      userId:      rows[0].author_id,
-      type:        'post_taken_down',
-      actorId:     opts.actorId,
-      targetType:  'post',
-      targetId:    opts.postId,
-      message:     `Your post "${rows[0].title}" has been taken down by an admin.`,
-    }).catch(() => {});
+    // Notify author using NotificationService
+    const post = postResult.rows[0];
+    if (post.author_id !== opts.actorId) {
+      await NotificationService.createNotification(
+        post.author_id,
+        'post_taken_down',
+        {
+          actorId: opts.actorId,
+          targetType: 'post',
+          targetId: opts.postId,
+          message: `Your post "${post.title}" has been taken down by an admin.`,
+        }
+      );
+    }
 
     writeAuditLog({
       actorId:    opts.actorId,
