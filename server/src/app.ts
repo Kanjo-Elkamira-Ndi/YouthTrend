@@ -21,6 +21,7 @@ import postsRoutes from './modules/posts/posts.routes';
 import commentsRoutes from './modules/comments/comments.routes';
 import notificationsRoutes from './modules/notifications/notifications.routes';
 import moderationRoutes   from './modules/moderation/moderation.routes';
+import writerUpgradeRoutes from './modules/writer-upgrade/writer-upgrade.routes';
 
 export function createApp(): Application {
   const app = express();
@@ -62,6 +63,7 @@ export function createApp(): Application {
   app.use('/api/v1', commentsRoutes);
   app.use('/api/v1/notifications', notificationsRoutes);
   app.use('/api/v1/moderation',       moderationRoutes);
+  app.use('/api/v1/writer-upgrade',   writerUpgradeRoutes);
   
   // ── 404 + error handlers ────────────────────────────────────────────────────
   app.use(notFoundHandler);
