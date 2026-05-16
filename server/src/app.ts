@@ -25,6 +25,7 @@ import writerUpgradeRoutes from './modules/writer-upgrade/writer-upgrade.routes'
 import announcementsRoutes from './modules/announcements/announcements.routes';
 import searchRoutes from './modules/search/search.routes';
 import analyticsRoutes from './modules/analytics/analytics.routes';
+import superAdminRoutes from './modules/super-admin/super-admin.routes';
 export function createApp(): Application {
   const app = express();
 
@@ -69,6 +70,7 @@ export function createApp(): Application {
   app.use('/api/v1/announcements',   announcementsRoutes);
   app.use('/api/v1/search',          searchRoutes);
   app.use('/api/v1/analytics',       analyticsRoutes);
+  app.use('/api/v1/super-admin',     superAdminRoutes);
   // ── 404 + error handlers ────────────────────────────────────────────────────
   app.use(notFoundHandler);
   app.use(errorHandler);
