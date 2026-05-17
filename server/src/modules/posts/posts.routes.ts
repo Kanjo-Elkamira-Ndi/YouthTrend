@@ -168,6 +168,41 @@ router.get(
   }),
 );
 
+// ── GET /api/v1/posts/user/:userId — posts by a specific user ────────────────
+router.get(
+  '/user/:userId',
+  optionalAuth,
+  asyncHandler(async (req, res) => {
+    const { data, meta } = await PostsService.getUserPosts({
+      authorId:       p(req.params.userId),
+      viewerId:       req.user?.id,
+      viewerCampusId: req.user?.campusId ?? undefined,
+      queryParams:    req.query as Record<string, unknown>,
+    });
+    return sendPaginated(res, data, meta);
+  }),
+);
+
+// ── GET /api/v1/posts/id/:id — single post by ID (for editing) ──────────────
+router.get(
+  '/id/:id',
+  requireAuth,
+  asyncHandler(async (req, res) => {
+    const post = await PostsService.getById(p(req.params.id));
+
+    // Only author or admin can view edit data
+    if (
+      post.author_id !== req.user!.id &&
+      req.user!.role !== 'campus_admin' &&
+      req.user!.role !== 'super_admin'
+    ) {
+      throw new ForbiddenError('You can only view your own posts.');
+    }
+
+    return sendSuccess(res, post);
+  }),
+);
+
 // ── GET /api/v1/posts/:campusSlug/:postSlug ───────────────────────────────────
 router.get(
   '/:campusSlug/:postSlug',

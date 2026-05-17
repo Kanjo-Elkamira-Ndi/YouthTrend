@@ -71,8 +71,9 @@ const App = () => (
             <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
               <Route element={<AuthenticatedLayout />}>
                 <Route path="/feed"                element={<Feed />}         />
-                <Route path="/post/:id"            element={<PostView />}     />
+                <Route path="/post/:campusSlug/:postSlug" element={<PostView />} />
                 <Route path="/write"               element={<Write />}        />
+                <Route path="/write/:postId"       element={<Write />}        />
                 <Route path="/profile/:username"   element={<Profile />}      />
                 <Route path="/bookmarks"           element={<Bookmarks />}    />
                 <Route path="/notifications"       element={<Notifications />}/>

@@ -3,30 +3,42 @@ import { CategoryPills } from "@/components/feed/CategoryPills";
 import { PostCard } from "@/components/feed/PostCard";
 import { Skeleton } from "@/components/ui/skeleton";
 import { InlineError } from "@/components/common/InlineError";
-import { posts, topics } from "@/mock";
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Input } from "@/components/ui/input";
 import { Search, SearchX, GraduationCap } from "lucide-react";
 import { EmptyState } from "@/components/common/EmptyState";
-import { api, unwrap } from "@/lib/api";
+import { FeedSkeleton } from "@/components/common/Skeletons";
+import { api, unwrap, unwrapPaginated } from "@/lib/api";
 import { CAMPUS_ICONS } from "@/lib/constants";
 import type { CampusRow } from "@/types/campus";
+import type { Post } from "@/types/post";
 
 const Explore = () => {
   const [cat, setCat] = useState("All");
-  const [error, setError] = useState(false);
 
   const { data: campusesData, isLoading: campusesLoading, isError: campusesError, refetch: refetchCampuses } = useQuery({
     queryKey: ["campuses"],
     queryFn: () => api.get("/campuses").then(unwrap) as Promise<CampusRow[]>,
   });
 
-  const filtered = cat === "All" ? posts : posts.filter((p) => p.category === cat);
+  const { data: postsData, isLoading: postsLoading, isError: postsError, refetch: refetchPosts } = useQuery({
+    queryKey: ['explore-posts', cat],
+    queryFn: () => {
+      const params: Record<string, unknown> = { sort: 'trending' };
+      if (cat !== 'All') params.category = cat;
+      return api.get('/posts/explore', { params }).then(unwrapPaginated<Post>);
+    },
+  });
+
+  const filtered = postsData?.data ?? [];
+  const error = postsError;
+  const refetch = () => { refetchCampuses(); refetchPosts(); };
+
   return (
     <AppShell>
       <div className="space-y-6">
-        {error && <InlineError message="Couldn't load fresh trending posts." onRetry={() => setError(false)} />}
+        {error && <InlineError message="Couldn't load trending posts." onRetry={refetch} />}
         <div>
           <h1 className="text-3xl font-extrabold">Explore</h1>
           <p className="text-muted-foreground mt-1">Discover stories across all Cameroonian campuses.</p>
@@ -70,16 +82,9 @@ const Explore = () => {
           </div>
         )}
 
-        <div>
-          <h3 className="text-sm font-bold uppercase text-muted-foreground tracking-wider mb-3">Topics</h3>
-          <div className="flex flex-wrap gap-2">
-            {topics.map((t) => <a href="#" key={t} className="text-sm px-3 py-1.5 rounded-full bg-secondary hover:bg-primary hover:text-primary-foreground">{t}</a>)}
-          </div>
-        </div>
-
         <CategoryPills active={cat} onChange={setCat} />
 
-        {filtered.length === 0 ? (
+        {postsLoading ? <FeedSkeleton /> : filtered.length === 0 ? (
           <EmptyState
             icon={SearchX}
             heading="No results found"

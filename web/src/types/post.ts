@@ -1,0 +1,30 @@
+export interface Post {
+  id: string;
+  title: string;
+  subtitle: string | null;
+  slug: string;
+  body: string;
+  cover_url: string | null;
+  category: string;
+  status: 'draft' | 'scheduled' | 'published' | 'taken_down';
+  visibility: 'public' | 'campus_only';
+  is_anonymous: boolean;
+  is_pinned: boolean;
+  scheduled_at: string | null;
+  published_at: string | null;
+  view_count: number;
+  clap_count: number;
+  comment_count: number;
+  tags: string[];
+  author_name: string | null;
+  author_username: string | null;
+  author_avatar_url: string | null;
+  campus_name: string | null;
+  campus_short_code: string | null;
+  campus_slug: string | null;
+  has_clapped: boolean;
+  clap_count_by_viewer: number;
+  has_bookmarked: boolean;
+  created_at: string;
+  updated_at: string;
+}
