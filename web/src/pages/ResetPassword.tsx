@@ -1,15 +1,15 @@
-// src/pages/ResetPassword.tsx
+import { useState, useMemo } from "react";
 import { SplitScreen } from "@/components/auth/SplitScreen";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Eye, EyeOff, KeyRound, CheckCircle2, XCircle } from "lucide-react";
-import { Link, useNavigate } from "react-router-dom";
-import { useState, useMemo } from "react";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { authClient } from "@/lib/auth-client";
+import { toast } from "sonner";
 
-// ── Password strength helper ─────────────────────────────────────────────────
 type Strength = { label: string; color: string; width: string; met: boolean[] };
 
 function getStrength(pw: string): Strength {
@@ -37,17 +37,35 @@ const RULE_LABELS = [
   "One special character",
 ];
 
-// ── Component ────────────────────────────────────────────────────────────────
 const ResetPassword = () => {
   const [show, setShow]       = useState(false);
   const [showC, setShowC]     = useState(false);
   const [pw, setPw]           = useState("");
   const [confirm, setConfirm] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [searchParams] = useSearchParams();
+  const token = searchParams.get("token");
   const nav = useNavigate();
 
   const strength = useMemo(() => getStrength(pw), [pw]);
   const match    = pw.length > 0 && confirm.length > 0 && pw === confirm;
-  const canSubmit = strength.met.every(Boolean) && match;
+  const canSubmit = strength.met.every(Boolean) && match && !loading && !!token;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!canSubmit || !token) return;
+    setLoading(true);
+    try {
+      await authClient.resetPassword({ newPassword: pw, token });
+      toast.success("Password reset successfully. Please sign in.");
+      nav("/signin");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Something went wrong";
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <SplitScreen
@@ -62,7 +80,6 @@ const ResetPassword = () => {
       }}
     >
       <div className="space-y-6">
-        {/* Icon */}
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -79,11 +96,7 @@ const ResetPassword = () => {
           </p>
         </div>
 
-        <form
-          onSubmit={(e) => { e.preventDefault(); if (canSubmit) nav("/signin"); }}
-          className="space-y-5"
-        >
-          {/* New password */}
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-1.5">
             <Label className="text-sm font-semibold">New Password</Label>
             <div className="relative">
@@ -102,7 +115,6 @@ const ResetPassword = () => {
               </button>
             </div>
 
-            {/* Strength bar */}
             {pw.length > 0 && (
               <motion.div
                 initial={{ opacity: 0, y: -4 }}
@@ -125,7 +137,6 @@ const ResetPassword = () => {
                   </span>
                 </div>
 
-                {/* Rules checklist */}
                 <div className="grid grid-cols-2 gap-1 pt-1">
                   {RULE_LABELS.map((rule, i) => (
                     <div key={rule} className="flex items-center gap-1.5">
@@ -149,7 +160,6 @@ const ResetPassword = () => {
             )}
           </div>
 
-          {/* Confirm password */}
           <div className="space-y-1.5">
             <Label className="text-sm font-semibold">Confirm Password</Label>
             <div className="relative">
@@ -188,7 +198,7 @@ const ResetPassword = () => {
             disabled={!canSubmit}
             className="w-full h-11 bg-primary hover:bg-primary/90 disabled:opacity-40 disabled:cursor-not-allowed"
           >
-            Reset Password
+            {loading ? "Resetting..." : "Reset Password"}
           </Button>
         </form>
 

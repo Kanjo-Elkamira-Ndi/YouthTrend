@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Lock, Upload, X, Check } from "lucide-react";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -10,6 +11,12 @@ import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { Skeleton } from "@/components/ui/skeleton";
+import { InlineError } from "@/components/common/InlineError";
+import { api, unwrap } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
+import type { CampusRow, CampusSettings as CampusSettingsType } from "@/types/campus";
 
 const ACCENT_PRESETS = [
   { id: "green", label: "Primary Green", hex: "#1A6E3C" },
@@ -26,15 +33,72 @@ const Upload2 = ({ label }: { label: string }) => (
 );
 
 const CampusAdminSettings = () => {
-  const [domains, setDomains] = useState(["@uy1.cm", "@uniyaounde1.cm"]);
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const campusSlug = user?.campus_slug;
+
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [domains, setDomains] = useState<string[]>([]);
   const [domainInput, setDomainInput] = useState("");
+  const [regMode, setRegMode] = useState<CampusSettingsType["registrationMode"]>("open");
+  const [autoApprove, setAutoApprove] = useState(false);
+  const [postApproval, setPostApproval] = useState(false);
+  const [anonymousPosting, setAnonymousPosting] = useState(false);
+  const [modSla, setModSla] = useState("24");
   const [accent, setAccent] = useState("green");
 
+  const { data: campus, isLoading, isError, refetch } = useQuery({
+    queryKey: ["campus", user?.campus_id],
+    queryFn: () => api.get(`/campuses/${campusSlug}`).then(unwrap) as Promise<CampusRow>,
+    enabled: !!campusSlug,
+  });
+
+  useEffect(() => {
+    if (campus) {
+      setName(campus.name);
+      setDescription(campus.description ?? "");
+      setDomains(campus.allowed_domains);
+      setRegMode(campus.settings.registrationMode);
+      setAutoApprove(campus.settings.autoApproveWriters);
+      setPostApproval(campus.settings.postApprovalRequired);
+      setAnonymousPosting(campus.settings.anonymousPostingEnabled);
+      setModSla(String(campus.settings.moderationSlaHours));
+    }
+  }, [campus]);
+
+  const saveMutation = useMutation({
+    mutationFn: (data: Record<string, unknown>) =>
+      api.patch(`/campuses/${user?.campus_id}`, data).then(unwrap),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["campus"] });
+      toast.success("Saved");
+    },
+    onError: () => toast.error("Failed to save changes"),
+  });
+
   const addDomain = () => {
-    const d = domainInput.trim();
+    const d = domainInput.trim().toLowerCase();
     if (d && !domains.includes(d)) setDomains([...domains, d]);
     setDomainInput("");
   };
+
+  if (isLoading) {
+    return (
+      <div className="p-4 lg:p-8 max-w-[900px] mx-auto w-full space-y-4">
+        <Skeleton className="h-10 w-64" />
+        <Skeleton className="h-96 w-full rounded-xl" />
+      </div>
+    );
+  }
+
+  if (isError) {
+    return (
+      <div className="p-4 lg:p-8 max-w-[900px] mx-auto w-full">
+        <InlineError message="Failed to load campus settings" onRetry={refetch} />
+      </div>
+    );
+  }
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="p-4 lg:p-8 max-w-[900px] mx-auto w-full">
@@ -51,12 +115,12 @@ const CampusAdminSettings = () => {
           <div className="yt-card p-6 space-y-5">
             <div className="space-y-1.5">
               <label className="text-xs font-semibold">Campus Name</label>
-              <Input defaultValue="University of Yaoundé I" />
+              <Input value={name} onChange={(e) => setName(e.target.value)} />
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-semibold">Campus Short Code</label>
               <div className="relative">
-                <Input defaultValue="UY1" disabled className="pr-10" />
+                <Input value={campus?.short_code ?? ""} disabled className="pr-10" />
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground"><Lock className="h-4 w-4" /></span>
@@ -67,13 +131,18 @@ const CampusAdminSettings = () => {
             </div>
             <div className="space-y-1.5">
               <label className="text-xs font-semibold">Campus Description</label>
-              <Textarea rows={3} defaultValue="The flagship public university of Cameroon, located in Yaoundé." />
+              <Textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <Upload2 label="Campus Logo" />
               <Upload2 label="Cover Banner" />
             </div>
-            <Button>Save Changes</Button>
+            <Button
+              onClick={() => saveMutation.mutate({ name, description: description || null })}
+              disabled={saveMutation.isPending}
+            >
+              {saveMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
           </div>
         </TabsContent>
 
@@ -103,11 +172,11 @@ const CampusAdminSettings = () => {
 
             <div className="space-y-2">
               <label className="text-xs font-semibold">Registration Mode</label>
-              <RadioGroup defaultValue="open" className="space-y-2">
+              <RadioGroup value={regMode} onValueChange={(v) => setRegMode(v as CampusSettingsType["registrationMode"])} className="space-y-2">
                 {[
-                  { v: "open", l: "Open", d: "Anyone with an allowed domain can join" },
-                  { v: "invite", l: "Invite Only", d: "Campus Admin must invite new members" },
-                  { v: "closed", l: "Closed", d: "No new registrations are accepted" },
+                  { v: "open" as const, l: "Open", d: "Anyone with an allowed domain can join" },
+                  { v: "invite_only" as const, l: "Invite Only", d: "Campus Admin must invite new members" },
+                  { v: "closed" as const, l: "Closed", d: "No new registrations are accepted" },
                 ].map((o) => (
                   <Label key={o.v} className="flex items-start gap-3 rounded-lg border border-border p-3 cursor-pointer hover:bg-secondary/50">
                     <RadioGroupItem value={o.v} className="mt-0.5" />
@@ -125,10 +194,15 @@ const CampusAdminSettings = () => {
                 <div className="font-semibold text-sm">Auto-approve Writers</div>
                 <div className="text-xs text-muted-foreground">New registrations are automatically granted Writer access</div>
               </div>
-              <Switch />
+              <Switch checked={autoApprove} onCheckedChange={setAutoApprove} />
             </div>
 
-            <Button>Save Changes</Button>
+            <Button
+              onClick={() => saveMutation.mutate({ allowedDomains: domains, settings: { registrationMode: regMode, autoApproveWriters: autoApprove } })}
+              disabled={saveMutation.isPending}
+            >
+              {saveMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
           </div>
         </TabsContent>
 
@@ -136,21 +210,20 @@ const CampusAdminSettings = () => {
         <TabsContent value="moderation" className="space-y-5">
           <div className="yt-card p-6 space-y-4">
             {[
-              { t: "Post approval required", d: "All posts must be approved before going live" },
-              { t: "Anonymous posting", d: "Allow students to post anonymously" },
-              { t: "Profanity filter", d: "Auto-flag posts containing profanity" },
+              { key: "postApprovalRequired" as const, t: "Post approval required", d: "All posts must be approved before going live", val: postApproval, set: setPostApproval },
+              { key: "anonymousPostingEnabled" as const, t: "Anonymous posting", d: "Allow students to post anonymously", val: anonymousPosting, set: setAnonymousPosting },
             ].map((s) => (
-              <div key={s.t} className="flex items-center justify-between rounded-lg border border-border p-3">
+              <div key={s.key} className="flex items-center justify-between rounded-lg border border-border p-3">
                 <div>
                   <div className="font-semibold text-sm">{s.t}</div>
                   <div className="text-xs text-muted-foreground">{s.d}</div>
                 </div>
-                <Switch />
+                <Switch checked={s.val} onCheckedChange={s.set} />
               </div>
             ))}
             <div className="space-y-1.5">
               <label className="text-xs font-semibold">Moderation SLA</label>
-              <Select defaultValue="24">
+              <Select value={modSla} onValueChange={setModSla}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="12">Target review time: 12 hours</SelectItem>
@@ -159,7 +232,12 @@ const CampusAdminSettings = () => {
                 </SelectContent>
               </Select>
             </div>
-            <Button>Save Changes</Button>
+            <Button
+              onClick={() => saveMutation.mutate({ settings: { postApprovalRequired: postApproval, anonymousPostingEnabled: anonymousPosting, moderationSlaHours: Number(modSla) } })}
+              disabled={saveMutation.isPending}
+            >
+              {saveMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
           </div>
         </TabsContent>
 
@@ -195,7 +273,9 @@ const CampusAdminSettings = () => {
               </RadioGroup>
             </div>
 
-            <Button>Save Changes</Button>
+            <Button disabled={saveMutation.isPending}>
+              {saveMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
           </div>
         </TabsContent>
       </Tabs>

@@ -1,16 +1,30 @@
 import { AppShell } from "@/components/layout/AppShell";
 import { PostCard } from "@/components/feed/PostCard";
-import { posts } from "@/mock";
-import { useState } from "react";
 import { EmptyState } from "@/components/common/EmptyState";
 import { Bookmark } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { api, unwrapPaginated } from "@/lib/api";
+import { FeedSkeleton } from "@/components/common/Skeletons";
+import { InlineError } from "@/components/common/InlineError";
+import type { Post } from "@/types/post";
 
 const Bookmarks = () => {
-  const [items] = useState(posts.slice(0, 4));
+  const { data, isLoading, isError, refetch } = useQuery({
+    queryKey: ['bookmarks'],
+    queryFn: () => api.get('/posts/bookmarks').then(unwrapPaginated<Post>),
+  });
+
+  const items = data?.data ?? [];
+
   return (
     <AppShell>
       <h1 className="text-3xl font-extrabold mb-6">Your Bookmarks</h1>
-      {items.length === 0 ? (
+
+      {isLoading ? (
+        <FeedSkeleton />
+      ) : isError ? (
+        <InlineError message="Failed to load bookmarks." onRetry={refetch} />
+      ) : items.length === 0 ? (
         <EmptyState
           icon={Bookmark}
           heading="No bookmarks yet"

@@ -1,9 +1,10 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Outlet, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { AuthProvider } from "@/context/AuthContext";
+import { ProtectedRoute, AdminRoute } from "@/components/common/ProtectedRoute";
 
 import Landing        from "./pages/Landing";
 import SignIn         from "./pages/SignIn";
@@ -37,7 +38,6 @@ import CampusAdminContent from "./pages/campus-admin/CampusAdminContent";
 import CampusAdminModeration from "./pages/campus-admin/CampusAdminModeration";
 import CampusAdminAnnouncements from "./pages/campus-admin/CampusAdminAnnouncements";
 import CampusAdminSettings from "./pages/campus-admin/CampusAdminSettings";
-const queryClient = new QueryClient();
 
 // Super Admin Imports
 import SuperAdminLayout from "./components/layout/SuperAdminLayout";
@@ -49,8 +49,9 @@ import SuperAdminModeration from "./pages/super-admin/SuperAdminModeration";
 import SuperAdminAnalytics from "./pages/super-admin/SuperAdminAnalytics";
 import SuperAdminPlatformSettings from "./pages/super-admin/SuperAdminPlatformSettings";
 import SuperAdminAuditLog from "./pages/super-admin/SuperAdminAuditLog";
+
 const App = () => (
-  <QueryClientProvider client={queryClient}>
+  <AuthProvider>
     <ThemeProvider>
       <TooltipProvider>
         <Toaster />
@@ -63,60 +64,66 @@ const App = () => (
             <Route path="/signup"          element={<SignUp />}          />
             <Route path="/forgot-password" element={<ForgotPassword />}  />
             <Route path="/reset-password"  element={<ResetPassword />}   />
-            {/* /check-inbox?mode=reset  → after ForgotPassword        */}
-            {/* /check-inbox?mode=verify → after SignUp                 */}
             <Route path="/check-inbox"     element={<CheckInbox />}      />
             <Route path="/onboarding" element={<OnboardingModal />} />
 
             {/* ── Authenticated ── */}
-            <Route element={<AuthenticatedLayout />}>
-              <Route path="/feed"                element={<Feed />}         />
-              <Route path="/post/:id"            element={<PostView />}     />
-              <Route path="/write"               element={<Write />}        />
-              <Route path="/profile/:username"   element={<Profile />}      />
-              <Route path="/bookmarks"           element={<Bookmarks />}    />
-              <Route path="/notifications"       element={<Notifications />}/>
-              <Route path="/settings"            element={<Settings />}     />
-              <Route path="/explore"             element={<Explore />}      />
-              <Route path="/search"              element={<SearchResults />} />
-              <Route path="/my-posts"            element={<MyPosts />} />
-              <Route path="/error" element={<ErrorPage />} />
-              <Route path="/writer/upgrade" element={<WriterUpgradeRequest />} />
+            <Route element={<ProtectedRoute><Outlet /></ProtectedRoute>}>
+              <Route element={<AuthenticatedLayout />}>
+                <Route path="/feed"                element={<Feed />}         />
+                <Route path="/post/:campusSlug/:postSlug" element={<PostView />} />
+                <Route path="/write"               element={<Write />}        />
+                <Route path="/write/:postId"       element={<Write />}        />
+                <Route path="/profile/:username"   element={<Profile />}      />
+                <Route path="/bookmarks"           element={<Bookmarks />}    />
+                <Route path="/notifications"       element={<Notifications />}/>
+                <Route path="/settings"            element={<Settings />}     />
+                <Route path="/explore"             element={<Explore />}      />
+                <Route path="/search"              element={<SearchResults />} />
+                <Route path="/my-posts"            element={<MyPosts />} />
+                <Route path="/error" element={<ErrorPage />} />
+                <Route path="/writer/upgrade" element={<WriterUpgradeRequest />} />
                 <Route path="/writer/onboarding" element={<WriterOnboarding />} />
                 <Route path="/writer/analytics" element={<PostAnalytics />} />
                 <Route path="/writer/analytics/:id" element={<PostAnalytics />} />
+              </Route>
             </Route>
 
             {/* ── Campus Admin ── */}
-            <Route path="/campus-admin" element={<CampusAdminLayout />}>
-              <Route index element={<Navigate to="/campus-admin/dashboard" replace />} />
-              <Route path="dashboard" element={<CampusAdminDashboard />} />
-              <Route path="users" element={<CampusAdminUsers />} />
-              <Route path="content" element={<CampusAdminContent />} />
-              <Route path="moderation" element={<CampusAdminModeration />} />
-              <Route path="announcements" element={<CampusAdminAnnouncements />} />
-              <Route path="settings" element={<CampusAdminSettings />} />
+            <Route element={<AdminRoute roles={["campus_admin", "super_admin"]}><Outlet /></AdminRoute>}>
+              <Route path="/campus-admin" element={<CampusAdminLayout />}>
+                <Route index element={<Navigate to="/campus-admin/dashboard" replace />} />
+                <Route path="dashboard" element={<CampusAdminDashboard />} />
+                <Route path="users" element={<CampusAdminUsers />} />
+                <Route path="content" element={<CampusAdminContent />} />
+                <Route path="moderation" element={<CampusAdminModeration />} />
+                <Route path="announcements" element={<CampusAdminAnnouncements />} />
+                <Route path="settings" element={<CampusAdminSettings />} />
+              </Route>
             </Route>
 
             {/* ── Super Admin ── */}
-            <Route path="/super-admin" element={<SuperAdminLayout />}>
-              <Route index element={<Navigate to="/super-admin/dashboard" replace />} />
-              <Route path="dashboard" element={<SuperAdminDashboard />} />
-              <Route path="campuses" element={<SuperAdminCampuses />} />
-              <Route path="users" element={<SuperAdminUsers />} />
-              <Route path="content" element={<SuperAdminContent />} />
-              <Route path="moderation" element={<SuperAdminModeration />} />
-              <Route path="analytics" element={<SuperAdminAnalytics />} />
-              <Route path="platform-settings" element={<SuperAdminPlatformSettings />} />
-              <Route path="audit-log" element={<SuperAdminAuditLog />} />
+            <Route element={<AdminRoute roles={["super_admin"]}><Outlet /></AdminRoute>}>
+              <Route path="/super-admin" element={<SuperAdminLayout />}>
+                <Route index element={<Navigate to="/super-admin/dashboard" replace />} />
+                <Route path="dashboard" element={<SuperAdminDashboard />} />
+                <Route path="campuses" element={<SuperAdminCampuses />} />
+                <Route path="users" element={<SuperAdminUsers />} />
+                <Route path="content" element={<SuperAdminContent />} />
+                <Route path="moderation" element={<SuperAdminModeration />} />
+                <Route path="analytics" element={<SuperAdminAnalytics />} />
+                <Route path="platform-settings" element={<SuperAdminPlatformSettings />} />
+                <Route path="audit-log" element={<SuperAdminAuditLog />} />
+              </Route>
             </Route>
+
             {/* ── Fallback ── */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>
-  </QueryClientProvider>
+  </AuthProvider>
 );
 
 export default App;

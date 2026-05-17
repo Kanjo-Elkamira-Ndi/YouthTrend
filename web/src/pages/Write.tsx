@@ -5,22 +5,160 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Bold, Italic, Underline, Quote, List, Image as ImageIcon, Link2, Heading1, Heading2, Upload } from "lucide-react";
-import { Link } from "react-router-dom";
+import { ArrowLeft, Upload } from "lucide-react";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { CATEGORIES } from "@/lib/constants";
-import { useState } from "react";
-import { toast } from "@/hooks/use-toast";
+import { useState, useEffect, useRef, useCallback } from "react";
+import { toast } from "sonner";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { api, unwrap } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+import type { Post } from "@/types/post";
 
 const Write = () => {
-  const [tags, setTags] = useState<string[]>(["campus", "uy1"]);
-  const [tagInput, setTagInput] = useState("");
+  const { postId } = useParams<{ postId: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
-  const onPublish = () => {
-    toast({
-      title: "Post published 🎉",
-      description: "Your story is now live on your campus feed.",
-    });
+  const [title, setTitle] = useState("");
+  const [subtitle, setSubtitle] = useState("");
+  const [body, setBody] = useState("");
+  const [category, setCategory] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState("");
+  const [visibility, setVisibility] = useState<"public" | "campus_only">("campus_only");
+  const [isAnonymous, setIsAnonymous] = useState(false);
+  const [currentPostId, setCurrentPostId] = useState<string | null>(postId ?? null);
+  const [autoSaveState, setAutoSaveState] = useState<"idle" | "saving" | "saved" | "failed">("idle");
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout>>();
+  const [publishOpen, setPublishOpen] = useState(false);
+
+  const { data: editPost, isLoading: editLoading } = useQuery({
+    queryKey: ['post-edit', postId],
+    queryFn: () => api.get('/posts/id/' + postId!).then(unwrap<Post>),
+    enabled: !!postId,
+  });
+
+  useEffect(() => {
+    if (editPost) {
+      setTitle(editPost.title);
+      setSubtitle(editPost.subtitle ?? "");
+      setBody(editPost.body);
+      setCategory(editPost.category);
+      setTags(editPost.tags);
+      setVisibility(editPost.visibility);
+      setIsAnonymous(editPost.is_anonymous);
+      setCurrentPostId(editPost.id);
+    }
+  }, [editPost]);
+
+  const createMutation = useMutation({
+    mutationFn: (draftData: Record<string, unknown>) =>
+      api.post('/posts', draftData).then(unwrap<{ id: string }>),
+    onSuccess: (data) => {
+      setCurrentPostId(data.id);
+      setAutoSaveState("saved");
+    },
+    onError: () => setAutoSaveState("failed"),
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: (draftData: Record<string, unknown>) =>
+      api.patch('/posts/' + currentPostId, draftData).then(unwrap),
+    onSuccess: () => setAutoSaveState("saved"),
+    onError: () => setAutoSaveState("failed"),
+  });
+
+  const publishMutation = useMutation({
+    mutationFn: () => api.post('/posts/' + currentPostId + '/publish').then(unwrap),
+    onSuccess: () => {
+      toast.success("Your post is live!");
+      navigate('/my-posts');
+    },
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Failed to publish.';
+      toast.error(msg);
+    },
+  });
+
+  const getDraftData = useCallback(() => ({
+    title,
+    subtitle: subtitle || undefined,
+    body,
+    category,
+    tags: tags.length ? tags : undefined,
+    visibility,
+    isAnonymous,
+  }), [title, subtitle, body, category, tags, visibility, isAnonymous]);
+
+  const autoSave = useCallback(() => {
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+
+    autoSaveTimer.current = setTimeout(async () => {
+      setAutoSaveState("saving");
+      const draftData = getDraftData();
+
+      if (!draftData.title || !draftData.body) {
+        setAutoSaveState("idle");
+        return;
+      }
+
+      try {
+        if (currentPostId) {
+          await updateMutation.mutateAsync(draftData);
+        } else {
+          await createMutation.mutateAsync(draftData);
+        }
+      } catch {
+        setAutoSaveState("failed");
+      }
+    }, 1500);
+  }, [getDraftData, currentPostId, updateMutation, createMutation]);
+
+  useEffect(() => {
+    autoSave();
+    return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
+  }, [title, subtitle, body, category, tags, visibility, isAnonymous]);
+
+  const handleSaveDraft = async () => {
+    const draftData = getDraftData();
+    setAutoSaveState("saving");
+    try {
+      if (currentPostId) {
+        await updateMutation.mutateAsync(draftData);
+      } else {
+        await createMutation.mutateAsync(draftData);
+      }
+      toast.success("Draft saved.");
+    } catch {
+      toast.error("Failed to save draft.");
+      setAutoSaveState("failed");
+    }
   };
+
+  const handlePublish = async () => {
+    if (!currentPostId) {
+      const draftData = getDraftData();
+      try {
+        const created = await createMutation.mutateAsync(draftData);
+        setCurrentPostId(created.id);
+        await publishMutation.mutateAsync();
+      } catch {
+        toast.error("Failed to publish.");
+      }
+    } else {
+      publishMutation.mutate();
+    }
+  };
+
+  if (postId && editLoading) {
+    return (
+      <div className="min-h-screen bg-background">
+        <AppNavbar />
+        <div className="container py-8 text-center text-muted-foreground">Loading post...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -31,11 +169,13 @@ const Write = () => {
             <ArrowLeft className="h-4 w-4" /> Back
           </Link>
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm">Save Draft</Button>
-            <Button variant="outline" size="sm">Preview</Button>
+            <span className="text-xs text-muted-foreground">
+              {autoSaveState === "saving" ? "Saving..." : autoSaveState === "saved" ? "Saved" : autoSaveState === "failed" ? "Save failed" : ""}
+            </span>
+            <Button variant="ghost" size="sm" onClick={handleSaveDraft}>Save Draft</Button>
             <Button
               size="sm"
-              onClick={onPublish}
+              onClick={handlePublish}
               className="relative overflow-hidden bg-primary hover:bg-primary/90 group"
             >
               <span className="relative z-10">Publish →</span>
@@ -47,21 +187,31 @@ const Write = () => {
 
       <div className="container grid lg:grid-cols-[1fr_320px] gap-8 py-8">
         <div className="max-w-2xl mx-auto w-full space-y-6">
-          <input className="w-full bg-transparent text-4xl md:text-5xl font-extrabold tracking-tight outline-none placeholder:text-muted-foreground/50" placeholder="Your headline here..." />
-          <input className="w-full bg-transparent text-xl text-muted-foreground outline-none placeholder:text-muted-foreground/50" placeholder="Add a subtitle (optional)" />
+          <input
+            className="w-full bg-transparent text-4xl md:text-5xl font-extrabold tracking-tight outline-none placeholder:text-muted-foreground/50"
+            placeholder="Your headline here..."
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+          />
+          <input
+            className="w-full bg-transparent text-xl text-muted-foreground outline-none placeholder:text-muted-foreground/50"
+            placeholder="Add a subtitle (optional)"
+            value={subtitle}
+            onChange={(e) => setSubtitle(e.target.value)}
+          />
 
           <div className="border-2 border-dashed border-border rounded-xl p-10 text-center hover:border-primary/60 transition-colors cursor-pointer">
             <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
             <p className="text-sm text-muted-foreground">Drag & drop a cover image, or click to upload</p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-1 border border-border rounded-lg p-1.5 bg-card sticky top-16 z-30">
-            {[Bold, Italic, Underline, Heading1, Heading2, Quote, List, ImageIcon, Link2].map((I, i) => (
-              <button key={i} className="h-8 w-8 rounded inline-flex items-center justify-center hover:bg-secondary text-muted-foreground hover:text-foreground"><I className="h-4 w-4" /></button>
-            ))}
-          </div>
-
-          <Textarea rows={20} placeholder="Tell your story..." className="text-lg leading-relaxed border-0 bg-transparent focus-visible:ring-0 resize-none px-0 shadow-none" />
+          <Textarea
+            rows={20}
+            placeholder="Tell your story..."
+            className="text-lg leading-relaxed border-0 bg-transparent focus-visible:ring-0 resize-none px-0 shadow-none"
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+          />
         </div>
 
         <aside className="space-y-5 lg:sticky lg:top-32 self-start">
@@ -69,7 +219,7 @@ const Write = () => {
             <h3 className="font-bold">Post Settings</h3>
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">Category</Label>
-              <Select>
+              <Select value={category} onValueChange={setCategory}>
                 <SelectTrigger><SelectValue placeholder="Select category" /></SelectTrigger>
                 <SelectContent>
                   {CATEGORIES.map((c) => (
@@ -102,8 +252,8 @@ const Write = () => {
                 />
               </div>
             </div>
-            <ToggleRow label="Public visibility" desc="Show outside your campus" />
-            <ToggleRow label="Anonymous" desc="Hide your name" />
+            <ToggleRow label="Public visibility" desc="Show outside your campus" checked={visibility === 'public'} onChange={(v) => setVisibility(v ? 'public' : 'campus_only')} />
+            <ToggleRow label="Anonymous" desc="Hide your name" checked={isAnonymous} onChange={setIsAnonymous} />
           </div>
         </aside>
       </div>
@@ -111,13 +261,13 @@ const Write = () => {
   );
 };
 
-const ToggleRow = ({ label, desc }: { label: string; desc: string }) => (
+const ToggleRow = ({ label, desc, checked, onChange }: { label: string; desc: string; checked: boolean; onChange: (v: boolean) => void }) => (
   <div className="flex items-start justify-between gap-3">
     <div>
       <div className="text-sm font-semibold">{label}</div>
       <div className="text-xs text-muted-foreground">{desc}</div>
     </div>
-    <Switch />
+    <Switch checked={checked} onCheckedChange={onChange} />
   </div>
 );
 

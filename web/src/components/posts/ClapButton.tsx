@@ -1,21 +1,44 @@
 import { useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useMutation } from "@tanstack/react-query";
+import { api, unwrap } from "@/lib/api";
 
 type Props = {
-  initial?: number;
+  postId: string;
+  initialClaps?: number;
+  initialMyClaps?: number;
   size?: "sm" | "lg";
 };
 
 type Particle = { id: number; x: number; y: number; rot: number };
 
-export const ClapButton = ({ initial = 0, size = "lg" }: Props) => {
-  const [claps, setClaps] = useState(initial);
+export const ClapButton = ({ postId, initialClaps = 0, initialMyClaps = 0, size = "lg" }: Props) => {
+  const [localClaps, setLocalClaps] = useState(initialClaps);
+  const [myClaps, setMyClaps] = useState(initialMyClaps);
   const [particles, setParticles] = useState<Particle[]>([]);
 
   const dim = size === "lg" ? "h-20 w-20 text-4xl" : "h-12 w-12 text-2xl";
+  const disabled = myClaps >= 50;
+
+  const { mutate: clap } = useMutation({
+    mutationFn: (count: number) =>
+      api.post('/posts/' + postId + '/clap', { count }).then(unwrap<{ totalClaps: number; myClaps: number }>),
+    onMutate: (count) => {
+      const newMine = Math.min(50, myClaps + count);
+      const delta = newMine - myClaps;
+      setMyClaps(newMine);
+      setLocalClaps(c => c + delta);
+    },
+    onSuccess: (data) => {
+      setLocalClaps(data.totalClaps);
+      setMyClaps(data.myClaps);
+    },
+  });
 
   const onClap = () => {
-    setClaps((c) => c + 1);
+    if (disabled) return;
+    clap(1);
+
     const newOnes: Particle[] = Array.from({ length: 6 }).map((_, i) => ({
       id: Date.now() + i,
       x: (Math.random() - 0.5) * 80,
@@ -33,10 +56,11 @@ export const ClapButton = ({ initial = 0, size = "lg" }: Props) => {
     <div className="flex flex-col items-center gap-2">
       <motion.button
         onClick={onClap}
-        whileTap={{ scale: 0.85 }}
-        whileHover={{ scale: 1.05 }}
+        whileTap={disabled ? {} : { scale: 0.85 }}
+        whileHover={disabled ? {} : { scale: 1.05 }}
         transition={{ type: "spring", stiffness: 400, damping: 15 }}
-        className={`relative rounded-full bg-primary/10 hover:bg-primary/20 inline-flex items-center justify-center ${dim}`}
+        className={`relative rounded-full inline-flex items-center justify-center ${dim} ${disabled ? 'bg-muted cursor-not-allowed' : 'bg-primary/10 hover:bg-primary/20'}`}
+        disabled={disabled}
       >
         <span>👏</span>
         <AnimatePresence>
@@ -55,8 +79,10 @@ export const ClapButton = ({ initial = 0, size = "lg" }: Props) => {
         </AnimatePresence>
       </motion.button>
       <div className="text-sm text-muted-foreground">
-        <span className="font-bold text-foreground">{claps.toLocaleString()}</span> claps
+        <span className="font-bold text-foreground">{localClaps.toLocaleString()}</span> claps
+        {myClaps > 0 && <span className="ml-1 text-xs">({myClaps})</span>}
       </div>
+      {disabled && <span className="text-[10px] text-muted-foreground">Max 50 claps per post</span>}
     </div>
   );
 };

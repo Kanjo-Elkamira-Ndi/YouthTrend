@@ -302,6 +302,61 @@ export const PostsService = {
     return post;
   },
 
+  // ── Posts by a specific user (public/campus-scoped) ────────────────────────
+  async getUserPosts(opts: {
+    authorId:    string;
+    viewerId?:   string;
+    viewerCampusId?: string;
+    queryParams: Record<string, unknown>;
+  }): Promise<{ data: PostFull[]; meta: PaginationMeta }> {
+    const { page, perPage, offset } = parsePagination(opts.queryParams);
+    const params: unknown[] = [opts.authorId];
+    let idx = 2;
+
+    const conditions: string[] = [
+      `p.author_id = $1`,
+      `p.status    = 'published'`,
+    ];
+
+    // If viewer is on a different campus, only show public posts
+    if (opts.viewerCampusId) {
+      conditions.push(
+        `(p.campus_id = $${idx}::uuid OR p.visibility = 'public')`,
+      );
+      params.push(opts.viewerCampusId);
+      idx++;
+    } else {
+      // Unauthenticated viewers only see public posts
+      conditions.push(`p.visibility = 'public'`);
+    }
+
+    const where = `WHERE ${conditions.join(' AND ')}`;
+
+    const { rows: total } = await query<{ count: string }>(
+      `SELECT COUNT(*)::text AS count FROM posts p ${where}`,
+      params,
+    );
+
+    const { rows } = await query<PostFull>(`
+      SELECT ${POST_SELECT}
+      FROM   posts p
+      JOIN   users    u ON u.id = p.author_id
+      JOIN   campuses c ON c.id = p.campus_id
+      ${where}
+      ORDER  BY p.published_at DESC
+      LIMIT  $${idx} OFFSET $${idx + 1}
+    `, [...params, perPage, offset]);
+
+    if (opts.viewerId) {
+      await PostsService._attachViewerContext(rows, opts.viewerId);
+    }
+
+    return {
+      data: rows,
+      meta: buildMeta(page, perPage, parseInt(total[0]?.count ?? '0', 10)),
+    };
+  },
+
   // ── Own posts list ──────────────────────────────────────────────────────────
   async getOwnPosts(opts: {
     authorId:    string;

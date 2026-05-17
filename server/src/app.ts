@@ -32,7 +32,6 @@ export function createApp(): Application {
   // ── Security ────────────────────────────────────────────────────────────────
   app.use(helmet());
   app.use(cors(corsOptions));
-  app.options('/{*path}', cors(corsOptions));
 
   // ── Body / cookies ──────────────────────────────────────────────────────────
   app.use(express.json({ limit: '2mb' }));
