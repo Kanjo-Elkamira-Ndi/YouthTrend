@@ -1,4 +1,4 @@
-// src/pages/ForgotPassword.tsx
+import { useState } from "react";
 import { SplitScreen } from "@/components/auth/SplitScreen";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,9 +6,27 @@ import { Label } from "@/components/ui/label";
 import { ArrowLeft, Mail, Send } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
+import { authClient } from "@/lib/auth-client";
+import { toast } from "sonner";
 
 const ForgotPassword = () => {
+  const [email, setEmail] = useState("");
+  const [loading, setLoading] = useState(false);
   const nav = useNavigate();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await authClient.forgetPassword({ email, redirectTo: "/reset-password" });
+      nav("/check-inbox?mode=reset");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Something went wrong";
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <SplitScreen
@@ -23,7 +41,6 @@ const ForgotPassword = () => {
       }}
     >
       <div className="space-y-6">
-        {/* Back link */}
         <Link
           to="/signin"
           className="inline-flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -32,7 +49,6 @@ const ForgotPassword = () => {
           Back to sign in
         </Link>
 
-        {/* Icon */}
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
@@ -50,18 +66,21 @@ const ForgotPassword = () => {
           </p>
         </div>
 
-        <form
-          onSubmit={(e) => { e.preventDefault(); nav("/check-inbox"); }}
-          className="space-y-4"
-        >
+        <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-1.5">
             <Label className="text-sm font-semibold">University Email</Label>
-            <Input type="email" placeholder="amara@uy1.cm" />
+            <Input
+              type="email"
+              placeholder="amara@uy1.cm"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
           </div>
 
-          <Button type="submit" className="w-full h-11 bg-primary hover:bg-primary/90">
+          <Button type="submit" disabled={loading} className="w-full h-11 bg-primary hover:bg-primary/90">
             <Send className="mr-2 h-4 w-4" />
-            Send Reset Link
+            {loading ? "Sending..." : "Send Reset Link"}
           </Button>
         </form>
 

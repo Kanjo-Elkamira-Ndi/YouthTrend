@@ -4,12 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowRight, BookOpen, PenSquare, Users, Globe, Shield, Heart, ThumbsUp,
+  ArrowRight, BookOpen, PenSquare, Users, Globe, Shield, Heart, ThumbsUp, GraduationCap,
 } from "lucide-react";
-import { posts, campuses } from "@/mock";
+import { posts } from "@/mock";
 import { PostCard } from "@/components/feed/PostCard";
 import { CategoryPills } from "@/components/feed/CategoryPills";
+import { Skeleton } from "@/components/ui/skeleton";
+import { InlineError } from "@/components/common/InlineError";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { api, unwrap } from "@/lib/api";
+import type { CampusRow } from "@/types/campus";
 import { CATEGORIES, CAMPUS_ICONS } from "@/lib/constants";
 
 // ── Sub-components ───────────────────────────────────────────────────────────
@@ -37,6 +42,11 @@ const Landing = () => {
     cat === "All"
       ? posts.slice(0, 6)
       : posts.filter((p) => p.category === cat).slice(0, 6);
+
+  const { data: campusesData, isLoading: campusesLoading, isError: campusesError, refetch: refetchCampuses } = useQuery({
+    queryKey: ["campuses"],
+    queryFn: () => api.get("/campuses").then(unwrap) as Promise<CampusRow[]>,
+  });
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
@@ -140,39 +150,59 @@ const Landing = () => {
         className="container py-16"
       >
         <SectionHeading eyebrow="Campuses" title="Explore your school. Discover others." />
-        <div className="mt-10 grid md:grid-cols-3 gap-6">
-          {campuses.map((c, idx) => (
-            <motion.div
-              key={c.id}
-              initial={{ opacity: 0, scale: 0.95 }}
-              whileInView={{ opacity: 1, scale: 1 }}
-              viewport={{ once: true }}
-              transition={{ delay: idx * 0.1 }}
-              whileHover={{ y: -5 }}
-              className="yt-card yt-card-hover p-6"
-            >
-              <div className="flex items-center gap-3 mb-4">
-                <motion.span
-                  className="h-12 w-12 rounded-xl bg-primary/10 text-primary inline-flex items-center justify-center"
-                  whileHover={{ rotate: 10 }}
-                >
-                  {(() => {
-                    const CampusIcon = CAMPUS_ICONS[c.short] ?? CATEGORIES[0].icon;
-                    return <CampusIcon className="h-6 w-6" />;
-                  })()}
-                </motion.span>
-                <div>
-                  <h3 className="font-bold leading-tight">{c.name}</h3>
-                  <p className="text-xs text-muted-foreground">{c.members.toLocaleString()} members</p>
+        {campusesLoading && (
+          <div className="mt-10 grid md:grid-cols-3 gap-6">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <div key={i} className="yt-card p-6 space-y-3">
+                <div className="flex items-center gap-3">
+                  <Skeleton className="h-12 w-12 rounded-xl" />
+                  <div className="space-y-2 flex-1">
+                    <Skeleton className="h-5 w-3/4" />
+                    <Skeleton className="h-3 w-1/2" />
+                  </div>
                 </div>
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-9 w-full rounded-md" />
               </div>
-              <p className="text-sm text-muted-foreground mb-4">
-                Latest: "{posts.find((p) => p.campus === c.short)?.title || "Welcome to the platform"}"
-              </p>
-              <Button variant="outline" size="sm" className="w-full">Explore Campus →</Button>
-            </motion.div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
+        {campusesError && <div className="mt-6"><InlineError message="Failed to load campuses" onRetry={refetchCampuses} /></div>}
+        {campusesData && (
+          <div className="mt-10 grid md:grid-cols-3 gap-6">
+            {campusesData.map((c, idx) => (
+              <motion.div
+                key={c.id}
+                initial={{ opacity: 0, scale: 0.95 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.1 }}
+                whileHover={{ y: -5 }}
+                className="yt-card yt-card-hover p-6"
+              >
+                <div className="flex items-center gap-3 mb-4">
+                  <motion.span
+                    className="h-12 w-12 rounded-xl bg-primary/10 text-primary inline-flex items-center justify-center"
+                    whileHover={{ rotate: 10 }}
+                  >
+                    {(() => {
+                      const CampusIcon = CAMPUS_ICONS[c.short_code] ?? GraduationCap;
+                      return <CampusIcon className="h-6 w-6" />;
+                    })()}
+                  </motion.span>
+                  <div>
+                    <h3 className="font-bold leading-tight">{c.name}</h3>
+                    <p className="text-xs text-muted-foreground">{(c.member_count ?? 0).toLocaleString()} members</p>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
+                  {c.description || "Welcome to the platform"}
+                </p>
+                <Button variant="outline" size="sm" className="w-full">Explore Campus →</Button>
+              </motion.div>
+            ))}
+          </div>
+        )}
       </motion.section>
 
       {/* ── CATEGORIES ── */}

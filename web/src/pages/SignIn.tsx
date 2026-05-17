@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { SplitScreen } from "@/components/auth/SplitScreen";
 import { SocialRow, Divider } from "@/components/auth/SocialButton";
 import { Button } from "@/components/ui/button";
@@ -6,11 +7,63 @@ import { Label } from "@/components/ui/label";
 import { LanguageToggle } from "@/components/common/Toggle";
 import { Eye, EyeOff, ArrowRight } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
-import { useState } from "react";
+import { authClient } from "@/lib/auth-client";
+import { api, unwrap } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
+import { toast } from "sonner";
+
+const PROVIDER_CALLBACK = "/feed";
 
 const SignIn = () => {
   const [show, setShow] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
   const nav = useNavigate();
+  const { refetch } = useAuth();
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const result = await authClient.signIn.email({ email, password });
+
+      if (result.error?.code === "EMAIL_NOT_VERIFIED") {
+        nav("/check-inbox?mode=verify");
+        return;
+      }
+
+      if (result.error) {
+        toast.error(result.error.message || "Sign in failed");
+        return;
+      }
+
+      const session = await api.get("/auth/session").then(unwrap);
+
+      if (!session.provisioned) {
+        await api.post("/auth/provision", {});
+      }
+
+      refetch();
+      nav("/feed");
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Something went wrong";
+      toast.error(msg);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const socialSignIn = (provider: "google" | "facebook" | "apple" | "twitter") => {
+    authClient.signIn.social({ provider, callbackURL: PROVIDER_CALLBACK });
+  };
+
+  const socialHandlers = {
+    google: () => socialSignIn("google"),
+    facebook: () => socialSignIn("facebook"),
+    apple: () => socialSignIn("apple"),
+    twitter: () => socialSignIn("twitter"),
+  };
 
   return (
     <SplitScreen
@@ -35,20 +88,29 @@ const SignIn = () => {
           </p>
         </div>
 
-        <SocialRow />
+        <SocialRow handlers={socialHandlers} />
         <Divider />
 
-        <form
-          onSubmit={(e) => { e.preventDefault(); nav("/feed"); }}
-          className="space-y-4"
-        >
+        <form onSubmit={handleSubmit} className="space-y-4">
           <Field label="Email Address">
-            <Input type="email" placeholder="amara@uy1.cm" />
+            <Input
+              type="email"
+              placeholder="amara@uy1.cm"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
           </Field>
 
           <Field label="Password">
             <div className="relative">
-              <Input type={show ? "text" : "password"} placeholder="••••••••" />
+              <Input
+                type={show ? "text" : "password"}
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+              />
               <button
                 type="button"
                 onClick={() => setShow(!show)}
@@ -67,8 +129,8 @@ const SignIn = () => {
             </div>
           </Field>
 
-          <Button type="submit" className="w-full h-11 bg-primary hover:bg-primary/90">
-            Sign In <ArrowRight className="ml-2 h-4 w-4" />
+          <Button type="submit" disabled={loading} className="w-full h-11 bg-primary hover:bg-primary/90">
+            {loading ? "Signing in..." : "Sign In"} <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </form>
 
@@ -80,13 +142,7 @@ const SignIn = () => {
   );
 };
 
-const Field = ({
-  label,
-  children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) => (
+const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
   <div className="space-y-1.5">
     <Label className="text-sm font-semibold">{label}</Label>
     {children}
