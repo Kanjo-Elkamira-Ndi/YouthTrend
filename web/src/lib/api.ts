@@ -1,8 +1,9 @@
 import axios from "axios";
 
-const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
+export const api = axios.create({
+  baseURL: import.meta.env.VITE_API_BASE_URL + "/api/v1",
   withCredentials: true,
+  headers: { "Content-Type": "application/json" },
 });
 
 api.interceptors.request.use((config) => {
@@ -12,13 +13,32 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      window.location.href = "/signin";
+  (res) => res,
+  (err) => {
+    if (err.response?.status === 401) {
+      const publicPaths = [
+        "/signin", "/signup", "/forgot-password",
+        "/reset-password", "/check-inbox", "/",
+      ];
+      if (!publicPaths.includes(window.location.pathname)) {
+        window.location.href = "/signin";
+      }
     }
-    return Promise.reject(error);
+    return Promise.reject(err);
   },
 );
 
-export default api;
+export const unwrap = <T>(res: { data: { data: T } }): T => res.data.data;
+
+export const unwrapPaginated = <T>(res: {
+  data: { data: T[]; meta: PaginationMeta };
+}): { data: T[]; meta: PaginationMeta } => res.data;
+
+export interface PaginationMeta {
+  page: number;
+  perPage: number;
+  total: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrev: boolean;
+}

@@ -1,15 +1,25 @@
-import { Navigate, Outlet } from "react-router-dom";
+import { Navigate } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
-import { FeedSkeleton } from "@/components/common/Skeletons";
+import type { ReactNode } from "react";
 
-const ProtectedRoute = () => {
+export const ProtectedRoute = ({ children }: { children: ReactNode }) => {
   const { user, loading } = useAuth();
 
-  if (loading) return <FeedSkeleton />;
+  if (loading) return <div className="min-h-screen bg-background" />;
 
   if (!user) return <Navigate to="/signin" replace />;
 
-  return <Outlet />;
+  return <>{children}</>;
 };
 
-export default ProtectedRoute;
+export const AdminRoute = ({ children, roles }: { children: ReactNode; roles: string[] }) => {
+  const { user, loading } = useAuth();
+
+  if (loading) return <div className="min-h-screen bg-background" />;
+
+  if (!user) return <Navigate to="/signin" replace />;
+
+  if (!roles.includes(user.role)) return <Navigate to="/feed" replace />;
+
+  return <>{children}</>;
+};
