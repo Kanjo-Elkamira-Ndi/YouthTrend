@@ -1,9 +1,10 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { ThemeProvider } from "@/context/ThemeContext";
+import { AuthProvider } from "@/context/AuthContext";
+import ProtectedRoute from "@/components/common/ProtectedRoute";
 
 import Landing        from "./pages/Landing";
 import SignIn         from "./pages/SignIn";
@@ -37,7 +38,6 @@ import CampusAdminContent from "./pages/campus-admin/CampusAdminContent";
 import CampusAdminModeration from "./pages/campus-admin/CampusAdminModeration";
 import CampusAdminAnnouncements from "./pages/campus-admin/CampusAdminAnnouncements";
 import CampusAdminSettings from "./pages/campus-admin/CampusAdminSettings";
-const queryClient = new QueryClient();
 
 // Super Admin Imports
 import SuperAdminLayout from "./components/layout/SuperAdminLayout";
@@ -50,7 +50,7 @@ import SuperAdminAnalytics from "./pages/super-admin/SuperAdminAnalytics";
 import SuperAdminPlatformSettings from "./pages/super-admin/SuperAdminPlatformSettings";
 import SuperAdminAuditLog from "./pages/super-admin/SuperAdminAuditLog";
 const App = () => (
-  <QueryClientProvider client={queryClient}>
+  <AuthProvider>
     <ThemeProvider>
       <TooltipProvider>
         <Toaster />
@@ -69,6 +69,7 @@ const App = () => (
             <Route path="/onboarding" element={<OnboardingModal />} />
 
             {/* ── Authenticated ── */}
+            <Route element={<ProtectedRoute />}>
             <Route element={<AuthenticatedLayout />}>
               <Route path="/feed"                element={<Feed />}         />
               <Route path="/post/:id"            element={<PostView />}     />
@@ -86,8 +87,10 @@ const App = () => (
                 <Route path="/writer/analytics" element={<PostAnalytics />} />
                 <Route path="/writer/analytics/:id" element={<PostAnalytics />} />
             </Route>
+            </Route>
 
             {/* ── Campus Admin ── */}
+            <Route element={<ProtectedRoute />}>
             <Route path="/campus-admin" element={<CampusAdminLayout />}>
               <Route index element={<Navigate to="/campus-admin/dashboard" replace />} />
               <Route path="dashboard" element={<CampusAdminDashboard />} />
@@ -97,8 +100,10 @@ const App = () => (
               <Route path="announcements" element={<CampusAdminAnnouncements />} />
               <Route path="settings" element={<CampusAdminSettings />} />
             </Route>
+            </Route>
 
             {/* ── Super Admin ── */}
+            <Route element={<ProtectedRoute />}>
             <Route path="/super-admin" element={<SuperAdminLayout />}>
               <Route index element={<Navigate to="/super-admin/dashboard" replace />} />
               <Route path="dashboard" element={<SuperAdminDashboard />} />
@@ -110,13 +115,14 @@ const App = () => (
               <Route path="platform-settings" element={<SuperAdminPlatformSettings />} />
               <Route path="audit-log" element={<SuperAdminAuditLog />} />
             </Route>
+            </Route>
             {/* ── Fallback ── */}
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
       </TooltipProvider>
     </ThemeProvider>
-  </QueryClientProvider>
+  </AuthProvider>
 );
 
 export default App;
