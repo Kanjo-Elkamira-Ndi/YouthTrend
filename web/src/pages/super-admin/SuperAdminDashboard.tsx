@@ -5,9 +5,11 @@ import {
   UserPlus, UserX, Settings2, Megaphone, ArrowRight,
 } from "lucide-react";
 import { ResponsiveContainer, LineChart, Line } from "recharts";
-import {
-  mockPlatformStats, mockCampusHealth, mockActivityFeed,
-} from "@/mock/superAdmin";
+import { useQuery } from "@tanstack/react-query";
+import { api, unwrap } from "@/lib/api";
+import { FeedSkeleton } from "@/components/common/Skeletons";
+import { InlineError } from "@/components/common/InlineError";
+import type { PlatformStats, CampusHealth } from "@/types/analytics";
 
 const STAT_ICONS: Record<string, any> = {
   campuses: Building2, users: UsersRound, posts: FileText, views: Eye, reports: ShieldAlert, growth: TrendingUp,
@@ -23,7 +25,54 @@ const TONE: Record<string, string> = {
   muted: "text-muted-foreground bg-secondary",
 };
 
+const mockActivityFeed = [
+  { id: 1, type: "campus",   icon: "UserPlus",    tone: "green" as const, text: "New campus registered: UDL",                  time: "10m ago" },
+  { id: 2, type: "content",  icon: "FileText",    tone: "green" as const, text: "847 posts published today",                   time: "1h ago" },
+  { id: 3, type: "report",   icon: "ShieldAlert", tone: "red" as const,   text: "6 new reports since yesterday",               time: "3h ago" },
+  { id: 4, type: "user",     icon: "UserX",       tone: "red" as const,   text: "User banned: Linda Etoundi · UDL",            time: "5h ago" },
+  { id: 5, type: "campus",   icon: "Building2",   tone: "green" as const, text: "Campus activated: IUBS",                      time: "Yesterday" },
+  { id: 6, type: "settings", icon: "Settings2",   tone: "muted" as const, text: "Platform settings updated",                   time: "Yesterday" },
+  { id: 7, type: "announce", icon: "Megaphone",   tone: "green" as const, text: "System announcement sent to all campuses",    time: "2d ago" },
+  { id: 8, type: "user",     icon: "UserPlus",    tone: "green" as const, text: "312 new users this week",                     time: "2d ago" },
+  { id: 9, type: "report",   icon: "ShieldAlert", tone: "red" as const,   text: "Escalation from UB: hate speech",             time: "3d ago" },
+  { id: 10,type: "content",  icon: "FileText",    tone: "green" as const, text: "New category proposed: Tech",                 time: "4d ago" },
+];
+
+const SA_CAMPUS_EMOJIS: Record<string, string> = {
+  uy1: "\u{1F3EB}", ub: "\u{1F30A}", iubs: "\u{1F4DA}", udl: "\u{1F393}", ub2: "\u{1F3D4}\uFE0F",
+};
+
+const spark = (seed: number) =>
+  Array.from({ length: 7 }, (_, i) => ({
+    d: i,
+    v: Math.round(40 + Math.sin(i + seed) * 12 + (i * (seed % 5))),
+  }));
+
 const SuperAdminDashboard = () => {
+  const { data: stats, isLoading: statsLoading, isError: statsError } = useQuery({
+    queryKey: ['admin', 'stats'],
+    queryFn: () => api.get('/admin/stats').then(unwrap<PlatformStats>),
+  });
+
+  const { data: campusHealth } = useQuery({
+    queryKey: ['admin', 'campus-health'],
+    queryFn: () => api.get('/admin/campus-health').then(unwrap<CampusHealth[]>),
+  });
+
+  if (statsLoading) return <div className="p-6"><FeedSkeleton /></div>;
+  if (statsError || !stats) return <div className="p-6"><InlineError message="Failed to load stats" /></div>;
+
+  const statCards = [
+    { key: "campuses", label: "Total Campuses", value: stats.totalCampuses.toString(), trend: "+0 this month", dir: "up" as const },
+    { key: "users",    label: "Total Users",    value: stats.totalUsers.toLocaleString(),  trend: "+0 this week", dir: "up" as const },
+    { key: "posts",    label: "Total Posts",    value: stats.totalPosts.toLocaleString(),  trend: "+0 this week", dir: "up" as const },
+    { key: "views",    label: "Total Views",    value: (stats.totalViews / 1000).toFixed(1) + "k", trend: "+0%", dir: "up" as const },
+    { key: "reports",  label: "Open Reports",   value: stats.openReports.toString(),        trend: "+0",          dir: stats.openReports > 0 ? "up" : "down" as const },
+    { key: "growth",   label: "Platform Growth",value: stats.platformGrowth,                trend: "vs last month", dir: "up" as const },
+  ];
+
+  const healthData = campusHealth ?? [];
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 8 }}
@@ -31,9 +80,8 @@ const SuperAdminDashboard = () => {
       transition={{ duration: 0.25 }}
       className="p-4 lg:p-6 space-y-6"
     >
-      {/* Stat cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        {mockPlatformStats.map((s, i) => {
+        {statCards.map((s, i) => {
           const Icon = STAT_ICONS[s.key] ?? TrendingUp;
           const TrendIcon = s.dir === "up" ? TrendingUp : TrendingDown;
           return (
@@ -59,7 +107,6 @@ const SuperAdminDashboard = () => {
         })}
       </div>
 
-      {/* Campus health + activity feed */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-3">
           <div className="flex items-center justify-between">
@@ -69,7 +116,7 @@ const SuperAdminDashboard = () => {
             </Link>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {mockCampusHealth.map((c, i) => (
+            {healthData.map((c, i) => (
               <motion.div
                 key={c.id}
                 initial={{ opacity: 0, y: 8 }}
@@ -79,25 +126,25 @@ const SuperAdminDashboard = () => {
               >
                 <div className="flex items-start justify-between gap-2">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className="text-xl leading-none">{c.emoji}</span>
+                    <span className="text-xl leading-none">{SA_CAMPUS_EMOJIS[c.id] ?? "\u{1F3EB}"}</span>
                     <div className="min-w-0">
                       <div className="text-sm font-semibold truncate">{c.name}</div>
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{c.short}</span>
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">{c.short_code}</span>
                     </div>
                   </div>
-                  <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold ${c.status === "Active" ? "text-primary" : "text-red-400"}`}>
-                    <span className={`h-1.5 w-1.5 rounded-full ${c.status === "Active" ? "bg-primary" : "bg-red-500"}`} />
-                    {c.status}
+                  <span className={`inline-flex items-center gap-1.5 text-[11px] font-semibold ${c.status === "active" ? "text-primary" : "text-red-400"}`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${c.status === "active" ? "bg-primary" : "bg-red-500"}`} />
+                    {c.status === "active" ? "Active" : c.status}
                   </span>
                 </div>
                 <div className="grid grid-cols-3 gap-2 text-center">
-                  <div><div className="text-sm font-bold">{c.users.toLocaleString()}</div><div className="text-[10px] text-muted-foreground">Users</div></div>
-                  <div><div className="text-sm font-bold">{c.posts.toLocaleString()}</div><div className="text-[10px] text-muted-foreground">Posts</div></div>
-                  <div><div className={`text-sm font-bold ${c.reports > 0 ? "text-red-400" : ""}`}>{c.reports}</div><div className="text-[10px] text-muted-foreground">Reports</div></div>
+                  <div><div className="text-sm font-bold">{c.member_count.toLocaleString()}</div><div className="text-[10px] text-muted-foreground">Users</div></div>
+                  <div><div className="text-sm font-bold">{c.post_count.toLocaleString()}</div><div className="text-[10px] text-muted-foreground">Posts</div></div>
+                  <div><div className={`text-sm font-bold ${c.open_report_count > 0 ? "text-red-400" : ""}`}>{c.open_report_count}</div><div className="text-[10px] text-muted-foreground">Reports</div></div>
                 </div>
                 <div className="h-12 -mx-1">
                   <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={c.spark}>
+                    <LineChart data={spark(i + 1)}>
                       <Line type="monotone" dataKey="v" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
                     </LineChart>
                   </ResponsiveContainer>
