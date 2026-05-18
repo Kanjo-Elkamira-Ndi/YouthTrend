@@ -2,7 +2,7 @@ import { AppShell } from "@/components/layout/AppShell";
 import { useParams, Link } from "react-router-dom";
 import { AuthorBadge } from "@/components/common/AuthorBadge";
 import { Button } from "@/components/ui/button";
-import { Bookmark, MessageCircle, Share2, MoreHorizontal, PartyPopper, ThumbsUp, MessageSquare, Pencil, Trash2, X, Check } from "lucide-react";
+import { Bookmark, MessageCircle, Share2, MoreHorizontal, PartyPopper, ThumbsUp, MessageSquare, Pencil, Trash2, X, Check, Flag } from "lucide-react";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { CATEGORIES } from "@/lib/constants";
@@ -17,6 +17,13 @@ import { FeedSkeleton } from "@/components/common/Skeletons";
 import { InlineError } from "@/components/common/InlineError";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { ReportModal } from "@/components/common/ReportModal";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 const PostView = () => {
   const { campusSlug, postSlug } = useParams<{ campusSlug: string; postSlug: string }>();
@@ -42,6 +49,8 @@ const PostView = () => {
   const [replyBody, setReplyBody] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editBody, setEditBody] = useState("");
+  const [reportOpen, setReportOpen] = useState(false);
+  const [reportTarget, setReportTarget] = useState<{ type: 'post' | 'comment'; id: string } | null>(null);
 
   useEffect(() => {
     if (post) setClaps(post.clap_count);
@@ -161,8 +170,16 @@ const PostView = () => {
         <div className="mt-6 flex items-center justify-between border-y border-border py-4">
           {authorUser && <AuthorBadge user={authorUser} sub={post.published_at ? new Date(post.published_at).toLocaleDateString() : undefined} />}
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline">Follow</Button>
-            <button className="text-muted-foreground hover:text-foreground"><MoreHorizontal className="h-4 w-4" /></button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="text-muted-foreground hover:text-foreground"><MoreHorizontal className="h-4 w-4" /></button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => { setReportTarget({ type: 'post', id: post.id }); setReportOpen(true); }}>
+                  <Flag className="h-4 w-4 mr-2 text-red-500" /> Report
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
 
@@ -236,6 +253,7 @@ const PostView = () => {
                   onEditBodyChange={setEditBody}
                   onEditSubmit={() => editingId && editComment.mutate({ commentId: editingId, body: editBody })}
                   onDelete={(id) => deleteComment.mutate(id)}
+                  onReport={(id) => { setReportTarget({ type: 'comment', id }); setReportOpen(true); }}
                   isReplyPending={addReply.isPending}
                   isEditPending={editComment.isPending}
                 />
@@ -244,6 +262,12 @@ const PostView = () => {
           )}
         </section>
       </article>
+      <ReportModal
+        open={reportOpen}
+        onOpenChange={(o) => { setReportOpen(o); if (!o) setReportTarget(null); }}
+        targetType={reportTarget?.type ?? 'post'}
+        targetId={reportTarget?.id ?? ''}
+      />
     </AppShell>
   );
 };
@@ -280,6 +304,7 @@ const CommentThread = ({
   onEditBodyChange: (v: string) => void;
   onEditSubmit: () => void;
   onDelete: (id: string) => void;
+  onReport: (id: string) => void;
   isReplyPending: boolean;
   isEditPending: boolean;
 }) => {
@@ -325,6 +350,11 @@ const CommentThread = ({
                   <Trash2 className="h-3.5 w-3.5" /> Delete
                 </button>
               </>
+            )}
+            {!isOwn && user && (
+              <button className="inline-flex items-center gap-1 hover:text-red-500" onClick={() => onReport(comment.id)}>
+                <Flag className="h-3.5 w-3.5" /> Report
+              </button>
             )}
           </div>
         </div>
@@ -382,6 +412,11 @@ const CommentThread = ({
                       <Trash2 className="h-3.5 w-3.5" /> Delete
                     </button>
                   </>
+                )}
+                {(user?.id !== reply.author_id) && user && (
+                  <button className="inline-flex items-center gap-1 hover:text-red-500" onClick={() => onReport(reply.id)}>
+                    <Flag className="h-3.5 w-3.5" /> Report
+                  </button>
                 )}
               </div>
             </div>
