@@ -27,6 +27,7 @@ export interface NotificationRow {
   message:     string;
   read:        boolean;
   created_at:  Date;
+  meta:        Record<string, unknown> | null;
 }
 
 export interface NotificationFull extends NotificationRow {

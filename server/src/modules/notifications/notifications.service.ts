@@ -16,6 +16,7 @@ const NOTIFICATION_SELECT = `
   n.id,          n.user_id,       n.type,
   n.actor_id,    n.target_type,   n.target_id,
   n.message,     n.read,          n.created_at,
+  n.meta,
   actor.full_name AS actor_name,
   actor.username AS actor_username,
   actor.avatar_url AS actor_avatar_url
@@ -26,6 +27,7 @@ export interface CreateNotificationPayload {
   targetType?: NotificationTargetType;
   targetId?:   string;
   message?:    string;
+  meta?:       Record<string, unknown> | null;
 }
 
 function runQuery<T extends QueryResultRow>(
@@ -161,9 +163,9 @@ export const NotificationService = {
 
     await runQuery(client, `
       INSERT INTO notifications
-        (user_id, type, actor_id, target_type, target_id, message)
+        (user_id, type, actor_id, target_type, target_id, message, meta)
       VALUES
-        ($1, $2, $3, $4, $5, $6)
+        ($1, $2, $3, $4, $5, $6, $7)
     `, [
       userId,
       type,
@@ -171,6 +173,7 @@ export const NotificationService = {
       payload.targetType ?? null,
       payload.targetId ?? null,
       payload.message ?? defaultMessage(type),
+      payload.meta ? JSON.stringify(payload.meta) : null,
     ]);
   },
 
