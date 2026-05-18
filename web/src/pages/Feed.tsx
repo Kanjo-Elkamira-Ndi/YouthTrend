@@ -43,10 +43,11 @@ const Feed = () => {
 
   useEffect(() => {
     if (campusData?.data) {
+      const data = Array.isArray(campusData.data) ? campusData.data : [];
       setAllCampusPosts(prev => {
-        if (campusPage === 1) return campusData.data;
+        if (campusPage === 1) return data;
         const existingIds = new Set(prev.map(p => p.id));
-        const newPosts = campusData.data.filter(p => !existingIds.has(p.id));
+        const newPosts = data.filter(p => !existingIds.has(p.id));
         return [...prev, ...newPosts];
       });
     }
@@ -54,10 +55,11 @@ const Feed = () => {
 
   useEffect(() => {
     if (followingData?.data) {
+      const data = Array.isArray(followingData.data) ? followingData.data : [];
       setAllFollowingPosts(prev => {
-        if (followingPage === 1) return followingData.data;
+        if (followingPage === 1) return data;
         const existingIds = new Set(prev.map(p => p.id));
-        const newPosts = followingData.data.filter(p => !existingIds.has(p.id));
+        const newPosts = data.filter(p => !existingIds.has(p.id));
         return [...prev, ...newPosts];
       });
     }
@@ -65,10 +67,11 @@ const Feed = () => {
 
   useEffect(() => {
     if (trendingData?.data) {
+      const data = Array.isArray(trendingData.data) ? trendingData.data : [];
       setAllTrendingPosts(prev => {
-        if (trendingPage === 1) return trendingData.data;
+        if (trendingPage === 1) return data;
         const existingIds = new Set(prev.map(p => p.id));
-        const newPosts = trendingData.data.filter(p => !existingIds.has(p.id));
+        const newPosts = data.filter(p => !existingIds.has(p.id));
         return [...prev, ...newPosts];
       });
     }
@@ -79,8 +82,8 @@ const Feed = () => {
   };
 
   const filtered = cat === "All"
-    ? allCampusPosts
-    : allCampusPosts.filter((p) => p.category === cat);
+    ? (Array.isArray(allCampusPosts) ? allCampusPosts : [])
+    : (Array.isArray(allCampusPosts) ? allCampusPosts.filter((p) => p.category === cat) : []);
 
   const campusMeta = campusData?.meta;
   const followingMeta = followingData?.meta;
