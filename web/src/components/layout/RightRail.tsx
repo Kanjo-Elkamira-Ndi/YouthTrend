@@ -1,23 +1,39 @@
 import type { ReactNode } from "react";
-import { announcements, trending, topics, events } from "@/mock";
+import { trending, topics, events, announcements as mockAnnouncements } from "@/mock";
 import { Search, Megaphone, TrendingUp, Tag, CalendarDays, ThumbsUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Link } from "react-router-dom";
+import { useQuery } from "@tanstack/react-query";
+import { api, unwrap } from "@/lib/api";
+import { useAuth } from "@/context/AuthContext";
 
-export const RightRail = () => (
+export const RightRail = () => {
+  const { user } = useAuth();
+
+  const { data: announcements } = useQuery({
+    queryKey: ['announcements', user?.campus_id],
+    queryFn: () => api.get('/announcements', { params: { perPage: 3 } }).then(unwrap),
+    enabled: !!user?.campus_id,
+  });
+
+  const list = Array.isArray(announcements) ? announcements : mockAnnouncements;
+
+  return (
   <aside className="hidden xl:flex flex-col w-80 shrink-0 sticky top-16 h-[calc(100vh-4rem)] py-6 pl-4 overflow-y-auto space-y-5">
-    <div className="relative">
-      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-      <Input placeholder="Search YouthTrend..." className="pl-9 bg-card" />
-    </div>
+    <Link to="/search">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input placeholder="Search YouthTrend..." className="pl-9 bg-card" readOnly />
+      </div>
+    </Link>
 
     <Section title="Campus Announcements" icon={<Megaphone className="h-4 w-4 text-primary" />}>
       <div className="space-y-3">
-        {announcements.map((a) => (
+        {(list as any[]).slice(0, 3).map((a: any) => (
           <div key={a.id} className="text-sm">
             <div className="flex items-center gap-2 mb-0.5">
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary font-bold">OFFICIAL</span>
-              <span className="text-[10px] text-muted-foreground">{a.time}</span>
+              <span className="text-[10px] text-muted-foreground">{a.created_at ? new Date(a.created_at).toLocaleDateString() : a.time}</span>
             </div>
             <div className="font-semibold">{a.title}</div>
             <p className="text-xs text-muted-foreground">{a.body}</p>
@@ -66,6 +82,7 @@ export const RightRail = () => (
     </Section>
   </aside>
 );
+};
 
 const Section = ({ title, icon, children }: { title: string; icon: ReactNode; children: ReactNode }) => (
   <div className="yt-card p-4">
