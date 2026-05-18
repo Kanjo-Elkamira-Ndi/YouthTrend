@@ -51,12 +51,12 @@ const spark = (seed: number) =>
 const SuperAdminDashboard = () => {
   const { data: stats, isLoading: statsLoading, isError: statsError } = useQuery({
     queryKey: ['admin', 'stats'],
-    queryFn: () => api.get('/admin/stats').then(unwrap<PlatformStats>),
+    queryFn: () => api.get('/super-admin/stats').then(unwrap<PlatformStats>),
   });
 
   const { data: campusHealth } = useQuery({
     queryKey: ['admin', 'campus-health'],
-    queryFn: () => api.get('/admin/campus-health').then(unwrap<CampusHealth[]>),
+    queryFn: () => api.get('/super-admin/campus-health').then(unwrap<CampusHealth[]>),
   });
 
   if (statsLoading) return <div className="p-6"><FeedSkeleton /></div>;

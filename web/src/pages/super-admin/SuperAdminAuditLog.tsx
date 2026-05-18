@@ -51,7 +51,7 @@ const SuperAdminAuditLog = () => {
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['admin', 'audit-log', params],
-    queryFn: () => api.get('/admin/audit-log', { params }).then(unwrapPaginated<AuditLogRow>),
+    queryFn: () => api.get('/super-admin/audit-log', { params }).then(unwrapPaginated<AuditLogRow>),
   });
 
   if (isLoading) return <div className="p-6"><FeedSkeleton /></div>;

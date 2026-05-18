@@ -54,7 +54,7 @@ const SuperAdminContent = () => {
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ['admin', 'content', params],
-    queryFn: () => api.get('/admin/content', { params }).then(unwrapPaginated<GlobalContentRow>),
+    queryFn: () => api.get('/super-admin/content', { params }).then(unwrapPaginated<GlobalContentRow>),
   });
 
   const takedownMutation = useMutation({

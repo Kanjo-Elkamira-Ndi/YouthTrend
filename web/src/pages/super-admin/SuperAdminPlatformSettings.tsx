@@ -20,7 +20,7 @@ const SuperAdminPlatformSettings = () => {
 
   const { data: settings, isLoading, isError } = useQuery({
     queryKey: ['admin', 'settings'],
-    queryFn: () => api.get('/admin/settings').then(unwrap<PlatformSettingsRow>),
+    queryFn: () => api.get('/super-admin/settings').then(unwrap<PlatformSettingsRow>),
   });
 
   const [form, setForm] = useState<Partial<PlatformSettingsRow>>({});
@@ -31,7 +31,7 @@ const SuperAdminPlatformSettings = () => {
 
   const updateMutation = useMutation({
     mutationFn: (payload: Record<string, unknown>) =>
-      api.patch('/admin/settings', payload).then(unwrap<PlatformSettingsRow>),
+      api.patch('/super-admin/settings', payload).then(unwrap<PlatformSettingsRow>),
     onSuccess: (updated) => {
       queryClient.setQueryData(['admin', 'settings'], updated);
       toast.success('Settings saved.');

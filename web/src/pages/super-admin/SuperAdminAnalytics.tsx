@@ -30,12 +30,12 @@ const SuperAdminAnalytics = () => {
 
   const { data: stats, isLoading, isError } = useQuery({
     queryKey: ['admin', 'stats'],
-    queryFn: () => api.get('/admin/stats').then(unwrap<PlatformStats>),
+    queryFn: () => api.get('/super-admin/stats').then(unwrap<PlatformStats>),
   });
 
   const { data: campusHealth } = useQuery({
     queryKey: ['admin', 'campus-health'],
-    queryFn: () => api.get('/admin/campus-health').then(unwrap<CampusHealth[]>),
+    queryFn: () => api.get('/super-admin/campus-health').then(unwrap<CampusHealth[]>),
   });
 
   if (isLoading) return <div className="p-6"><FeedSkeleton /></div>;
