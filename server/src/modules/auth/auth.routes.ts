@@ -131,7 +131,7 @@ router.get('/me', requireAuth, asyncHandler(async (req, res) => {
 }));
 
 // ── PATCH /api/v1/auth/me ─────────────────────────────────────────────────────
-// Update own profile (name, bio, department, year, avatar, matricule).
+// Update own profile (name, bio, department, year, avatar (profile img), matricule).
 // Does NOT allow changing email, password, or role.
 
 router.patch(
