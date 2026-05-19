@@ -40,6 +40,17 @@ const SignUp = () => {
 
   const canSubmit = !!name && !!email && !!password && password === confirm && agreed && !loading;
 
+  const socialSignIn = (provider: "google" | "facebook" | "apple" | "twitter") => {
+    authClient.signIn.social({ provider, callbackURL: `${window.location.origin}/feed` });
+  };
+
+  const socialHandlers = {
+    google: () => socialSignIn("google"),
+    facebook: () => socialSignIn("facebook"),
+    apple: () => socialSignIn("apple"),
+    twitter: () => socialSignIn("twitter"),
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!canSubmit) return;
@@ -79,7 +90,7 @@ const SignUp = () => {
           </p>
         </div>
 
-        <SocialRow />
+        <SocialRow handlers={socialHandlers} />
         <Divider />
 
         <form onSubmit={handleSubmit} className="space-y-4">

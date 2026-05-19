@@ -62,14 +62,14 @@ export async function requireAuth(
     );
 
     if (!rows[0]) {
-      // Better Auth user exists but no application user row yet —
+      // Better Auth user exists but no application user row yet—
       // this happens if the after-signup hook hasn't run.
       return next(new UnauthorizedError('User account not fully set up. Please contact support.'));
     }
 
     const user = rows[0];
 
-    // Check account status
+    // Check account status to know the state of an account
     if (user.status === 'banned') {
       return next(new ForbiddenError('Your account has been banned from the platform.'));
     }
@@ -100,7 +100,7 @@ export async function requireAuth(
  * Must be used AFTER requireAuth.
  *
  * Usage:
- *   router.delete('/post/:id', requireAuth, requireRole('campus_admin', 'super_admin'), handler)
+ *   router.delete('/post/:id', requireAuth, requireRole('campus_admin', 'super_admin'),handler)
  */
 export function requireRole(...roles: UserRole[]) {
   return (req: Request, _res: Response, next: NextFunction): void => {

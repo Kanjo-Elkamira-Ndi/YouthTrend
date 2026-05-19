@@ -12,7 +12,7 @@ import { api, unwrap } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import { toast } from "sonner";
 
-const PROVIDER_CALLBACK = "/feed";
+const PROVIDER_CALLBACK = `${window.location.origin}/feed`;
 
 const SignIn = () => {
   const [show, setShow] = useState(false);
