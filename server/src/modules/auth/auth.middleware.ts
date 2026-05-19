@@ -69,7 +69,7 @@ export async function requireAuth(
 
     const user = rows[0];
 
-    // Check account status
+    // Check account status to know the state of an account
     if (user.status === 'banned') {
       return next(new ForbiddenError('Your account has been banned from the platform.'));
     }
