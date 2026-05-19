@@ -41,7 +41,7 @@ const SignUp = () => {
   const canSubmit = !!name && !!email && !!password && password === confirm && agreed && !loading;
 
   const socialSignIn = (provider: "google" | "facebook" | "apple" | "twitter") => {
-    authClient.signIn.social({ provider, callbackURL: "/feed" });
+    authClient.signIn.social({ provider, callbackURL: `${window.location.origin}/feed` });
   };
 
   const socialHandlers = {

@@ -64,7 +64,7 @@ const updateProfileSchema = z.object({
 });
 
 // ── GET /api/v1/auth/session ──────────────────────────────────────────────────
-// Lightweight session check — called by the frontend on app load.
+// Lightweight user auth session check — called by the frontend on app load.
 // Returns 200 + minimal user data if authenticated, 401 if not.
 
 router.get('/session', asyncHandler(async (req, res) => {
@@ -93,7 +93,7 @@ router.get('/session', asyncHandler(async (req, res) => {
 
 // ── GET /api/v1/auth/me ───────────────────────────────────────────────────────
 // Full application user profile with campus join.
-// Also returns follower / following / post counts for the profile header.
+// Also returns follower / following / post counts for the profile header
 
 router.get('/me', requireAuth, asyncHandler(async (req, res) => {
   const { rows } = await query(`
