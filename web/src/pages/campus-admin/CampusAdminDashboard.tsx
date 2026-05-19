@@ -2,7 +2,7 @@ import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
 import {
   UsersRound, FileText, ShieldAlert, Eye, TrendingUp, TrendingDown,
-  AlertTriangle, MoreHorizontal, Pin, EyeOff, Trash2,
+  AlertTriangle, MoreHorizontal, Pin, EyeOff, Trash2, Award, Check, X,
 } from "lucide-react";
 import {
   mockCampusStats, mockRecentPosts, mockTopWriters, mockActivityData,
@@ -15,6 +15,10 @@ import {
 import {
   BarChart, Bar, XAxis, ResponsiveContainer, Tooltip,
 } from "recharts";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api, unwrap, unwrapPaginated } from "@/lib/api";
+import type { WriterUpgradeFull } from "@/types/writer";
+import { toast } from "sonner";
 
 const STAT_ICONS = { students: UsersRound, posts: FileText, reports: ShieldAlert, views: Eye } as const;
 
@@ -33,6 +37,33 @@ const StatusBadge = ({ s }: { s: string }) => {
 };
 
 const CampusAdminDashboard = () => {
+  const queryClient = useQueryClient();
+
+  const { data: writerRequests } = useQuery({
+    queryKey: ['writer-upgrade', 'campus'],
+    queryFn: () => api.get('/writer-upgrade/campus?perPage=10').then(unwrapPaginated<WriterUpgradeFull>),
+  });
+
+  const approveRequest = useMutation({
+    mutationFn: (id: string) => api.patch('/writer-upgrade/campus/' + id + '/approve').then(unwrap),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['writer-upgrade'] });
+      toast.success('Writer upgrade approved.');
+    },
+    onError: () => toast.error('Failed to approve request.'),
+  });
+
+  const declineRequest = useMutation({
+    mutationFn: (id: string) => api.patch('/writer-upgrade/campus/' + id + '/decline').then(unwrap),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['writer-upgrade'] });
+      toast.success('Writer upgrade declined.');
+    },
+    onError: () => toast.error('Failed to decline request.'),
+  });
+
+  const pendingRequests = writerRequests?.data?.filter((r) => r.status === 'pending') ?? [];
+
   return (
     <div className="p-4 lg:p-8 space-y-6 max-w-[1400px] mx-auto w-full">
       {/* Stat cards */}
@@ -78,6 +109,40 @@ const CampusAdminDashboard = () => {
           <Link to="/campus-admin/moderation">Review Now →</Link>
         </Button>
       </motion.div>
+
+      {/* Writer Upgrade Requests */}
+      {pendingRequests.length > 0 && (
+        <motion.div
+          initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
+          className="rounded-xl border border-l-4 border-indigo-500 bg-indigo-500/10 p-4"
+        >
+          <div className="flex items-center gap-2 mb-3">
+            <Award className="h-5 w-5 text-indigo-600 shrink-0" />
+            <h3 className="font-bold text-sm">Writer Upgrade Requests ({pendingRequests.length} pending)</h3>
+          </div>
+          <div className="space-y-2">
+            {pendingRequests.map((req) => (
+              <div key={req.id} className="flex items-center justify-between gap-3 bg-background/50 rounded-lg px-3 py-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <img src={req.requester_avatar_url ?? ''} alt="" className="h-8 w-8 rounded-full" />
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold truncate">{req.requester_full_name}</div>
+                    <div className="text-xs text-muted-foreground truncate">{req.requester_username} · {req.topics?.join(', ')}</div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-green-500" onClick={() => approveRequest.mutate(req.id)}>
+                    <Check className="h-4 w-4" />
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-8 w-8 p-0 text-red-500" onClick={() => declineRequest.mutate(req.id)}>
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+      )}
 
       {/* Recent posts + top writers */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

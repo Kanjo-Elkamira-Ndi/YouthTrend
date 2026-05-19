@@ -4,51 +4,126 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Award, CheckCircle2, FileText, Sparkles, Upload } from "lucide-react";
+import { Award, FileText, XCircle, Clock } from "lucide-react";
 import { motion } from "framer-motion";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
+import { api, unwrap } from "@/lib/api";
+import type { WriterUpgradeFull } from "@/types/writer";
+import { FeedSkeleton } from "@/components/common/Skeletons";
+import { InlineError } from "@/components/common/InlineError";
 import { toast } from "sonner";
-
-const REQUIREMENTS = [
-  { label: "Active for at least 30 days", met: true },
-  { label: "Published 3+ posts", met: true },
-  { label: "Completed campus profile", met: true },
-  { label: "Verified student email", met: false },
-];
 
 const TOPICS = ["Academics", "Gist", "Sports", "News", "Events", "Culture", "Opinion", "Tech"];
 
 const WriterUpgradeRequest = () => {
   const [topics, setTopics] = useState<string[]>([]);
-  const [bio, setBio] = useState("");
-  const [sample, setSample] = useState("");
+  const [motivation, setMotivation] = useState("");
+  const [sampleTitle, setSampleTitle] = useState("");
+  const [sampleBody, setSampleBody] = useState("");
+  const [externalLink, setExternalLink] = useState("");
   const [agree, setAgree] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const navigate = useNavigate();
+
+  const { data: existing, isLoading, isError, refetch } = useQuery({
+    queryKey: ['writer-upgrade', 'mine'],
+    queryFn: () => api.get('/writer-upgrade/mine').then(unwrap<WriterUpgradeFull[]>),
+  });
+
+  const submit = useMutation({
+    mutationFn: () =>
+      api.post('/writer-upgrade', {
+        topics,
+        motivation,
+        sampleTitle,
+        sampleBody,
+        externalLink: externalLink.trim() || undefined,
+      }).then(unwrap),
+    onSuccess: () => {
+      navigate('/check-inbox?mode=upgrade');
+    },
+    onError: () => toast.error('Failed to submit application.'),
+  });
+
+  const existingRequest = existing && existing.length > 0 ? existing[0] : null;
 
   const toggle = (t: string) =>
     setTopics((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
 
-  const submit = () => {
-    setSubmitted(true);
-    toast.success("Application submitted", { description: "We'll review within 3 business days." });
-  };
-
-  if (submitted) {
+  if (isLoading) {
     return (
       <AppShell hideRight>
-        <motion.div
-          initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }}
-          className="max-w-xl mx-auto text-center py-16"
-        >
+        <div className="max-w-3xl mx-auto"><FeedSkeleton /></div>
+      </AppShell>
+    );
+  }
+
+  if (isError) {
+    return (
+      <AppShell hideRight>
+        <div className="max-w-3xl mx-auto mt-12">
+          <InlineError message="Couldn't load your application status." onRetry={refetch} />
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (existingRequest?.status === 'approved') {
+    return (
+      <AppShell hideRight>
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="max-w-xl mx-auto text-center py-16">
           <div className="h-20 w-20 rounded-full bg-primary/15 inline-flex items-center justify-center mb-4">
-            <CheckCircle2 className="h-10 w-10 text-primary" />
+            <Award className="h-10 w-10 text-primary" />
           </div>
-          <h1 className="text-2xl font-extrabold">Application received</h1>
+          <h1 className="text-2xl font-extrabold">You're a Verified Writer!</h1>
           <p className="text-sm text-muted-foreground mt-2">
-            Our editorial team will review your request and respond within 3 business days. You'll get a notification.
+            Your application has been approved. You now have access to featured placement, analytics, and the verified badge.
           </p>
-          <Button className="mt-6" onClick={() => setSubmitted(false)}>Back to form</Button>
+          <Button className="mt-6" asChild>
+            <a href="/write">Start writing →</a>
+          </Button>
+        </motion.div>
+      </AppShell>
+    );
+  }
+
+  if (existingRequest?.status === 'declined') {
+    return (
+      <AppShell hideRight>
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="max-w-xl mx-auto text-center py-16">
+          <div className="h-20 w-20 rounded-full bg-red-500/10 inline-flex items-center justify-center mb-4">
+            <XCircle className="h-10 w-10 text-red-500" />
+          </div>
+          <h1 className="text-2xl font-extrabold">Application declined</h1>
+          {existingRequest.reviewer_note && (
+            <p className="text-sm text-muted-foreground mt-2 italic">"{existingRequest.reviewer_note}"</p>
+          )}
+          <p className="text-sm text-muted-foreground mt-2">
+            You can submit a new application after 30 days.
+          </p>
+          <Button className="mt-6" onClick={() => window.location.reload()}>
+            Submit new application
+          </Button>
+        </motion.div>
+      </AppShell>
+    );
+  }
+
+  if (existingRequest?.status === 'pending') {
+    return (
+      <AppShell hideRight>
+        <motion.div initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="max-w-xl mx-auto text-center py-16">
+          <div className="h-20 w-20 rounded-full bg-amber-500/10 inline-flex items-center justify-center mb-4">
+            <Clock className="h-10 w-10 text-amber-500" />
+          </div>
+          <h1 className="text-2xl font-extrabold">Application under review</h1>
+          <p className="text-sm text-muted-foreground mt-2">
+            Your application is being reviewed by the campus editorial team. You'll be notified when a decision is made.
+          </p>
+          <p className="text-xs text-muted-foreground mt-4">
+            Submitted on {new Date(existingRequest.created_at).toLocaleDateString()}
+          </p>
         </motion.div>
       </AppShell>
     );
@@ -65,18 +140,6 @@ const WriterUpgradeRequest = () => {
             <h1 className="text-2xl md:text-3xl font-extrabold">Become a Verified Writer</h1>
             <p className="text-sm text-muted-foreground">Get featured placement, analytics, and the verified badge.</p>
           </div>
-        </div>
-
-        <div className="yt-card p-5 mb-5">
-          <h2 className="font-semibold mb-3 inline-flex items-center gap-2"><Sparkles className="h-4 w-4 text-primary" /> Eligibility</h2>
-          <ul className="space-y-2">
-            {REQUIREMENTS.map((r) => (
-              <li key={r.label} className="flex items-center gap-2 text-sm">
-                <CheckCircle2 className={`h-4 w-4 ${r.met ? "text-primary" : "text-muted-foreground/40"}`} />
-                <span className={r.met ? "" : "text-muted-foreground"}>{r.label}</span>
-              </li>
-            ))}
-          </ul>
         </div>
 
         <div className="yt-card p-5 space-y-5">
@@ -100,44 +163,59 @@ const WriterUpgradeRequest = () => {
           </div>
 
           <div>
-            <Label htmlFor="bio">Writer bio (max 200 chars)</Label>
+            <Label htmlFor="motivation">Why do you want to become a writer? (min 50 chars)</Label>
             <Textarea
-              id="bio" value={bio} maxLength={200}
-              onChange={(e) => setBio(e.target.value)}
+              id="motivation" value={motivation} maxLength={1000}
+              onChange={(e) => setMotivation(e.target.value)}
               placeholder="Tell us why your voice matters on YouthTrend."
               className="mt-2 min-h-[100px]"
             />
-            <p className="text-xs text-muted-foreground mt-1">{bio.length}/200</p>
+            <p className="text-xs text-muted-foreground mt-1">{motivation.length}/1000</p>
           </div>
 
           <div>
-            <Label htmlFor="sample">Sample writing or links</Label>
-            <Textarea
-              id="sample" value={sample}
-              onChange={(e) => setSample(e.target.value)}
-              placeholder="Paste a sample article, or share links to your previous work."
-              className="mt-2 min-h-[120px]"
+            <Label htmlFor="sampleTitle">Sample article title</Label>
+            <Input
+              id="sampleTitle" value={sampleTitle} maxLength={500}
+              onChange={(e) => setSampleTitle(e.target.value)}
+              placeholder="Give your sample a compelling title"
+              className="mt-2"
             />
           </div>
 
           <div>
-            <Label>ID verification</Label>
-            <button className="mt-2 w-full border-2 border-dashed border-border rounded-xl p-6 flex flex-col items-center gap-2 hover:bg-muted/30 transition">
-              <Upload className="h-6 w-6 text-muted-foreground" />
-              <span className="text-sm">Upload your student ID card</span>
-              <span className="text-xs text-muted-foreground">PNG or JPG, max 5MB</span>
-            </button>
+            <Label htmlFor="sampleBody">Sample article body</Label>
+            <Textarea
+              id="sampleBody" value={sampleBody}
+              onChange={(e) => setSampleBody(e.target.value)}
+              placeholder="Write or paste a sample article (min 100 characters)."
+              className="mt-2 min-h-[200px]"
+              maxLength={10000}
+            />
+            <p className="text-xs text-muted-foreground mt-1">{sampleBody.length}/10000</p>
+          </div>
+
+          <div>
+            <Label htmlFor="externalLink">External link (optional)</Label>
+            <Input
+              id="externalLink" value={externalLink}
+              onChange={(e) => setExternalLink(e.target.value)}
+              placeholder="Link to your portfolio or previous work"
+              className="mt-2"
+            />
           </div>
 
           <label className="flex items-start gap-3 text-sm">
             <Checkbox checked={agree} onCheckedChange={(v) => setAgree(!!v)} className="mt-0.5" />
-            <span>I agree to the <a href="#" className="text-primary underline">Writer Code of Conduct</a> and confirm all information is accurate.</span>
+            <span>I confirm all information is accurate.</span>
           </label>
 
-          <div className="flex flex-col sm:flex-row gap-2 sm:justify-end">
-            <Button variant="outline">Save draft</Button>
-            <Button disabled={!agree || topics.length === 0} onClick={submit}>
-              <FileText className="h-4 w-4" /> Submit application
+          <div className="flex justify-end">
+            <Button
+              disabled={!agree || topics.length === 0 || motivation.length < 50 || sampleTitle.length < 5 || sampleBody.length < 100 || submit.isPending}
+              onClick={() => submit.mutate()}
+            >
+              <FileText className="h-4 w-4" /> {submit.isPending ? 'Submitting...' : 'Submit application'}
             </Button>
           </div>
         </div>

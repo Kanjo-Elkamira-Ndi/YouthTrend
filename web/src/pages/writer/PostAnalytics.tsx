@@ -1,72 +1,79 @@
 import { useState } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { AppShell } from "@/components/layout/AppShell";
-import { posts } from "@/mock";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { FeedSkeleton } from "@/components/common/Skeletons";
+import { InlineError } from "@/components/common/InlineError";
 import {
   Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Pie, PieChart,
   ResponsiveContainer, Tooltip, XAxis, YAxis,
 } from "recharts";
-import { Eye, Hand, MessageSquare, Share2, TrendingUp, UserPlus } from "lucide-react";
+import { Eye, Hand, MessageSquare, Share2, TrendingUp, ArrowLeft } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { api, unwrap } from "@/lib/api";
+import type { PostAnalyticsResponse } from "@/types/analytics";
 
-const RANGE_DAYS = { "7d": 7, "30d": 30, "90d": 90 } as const;
-type RangeKey = keyof typeof RANGE_DAYS;
-
-const seedSeries = (n: number, base: number, jitter = 0.4) =>
-  Array.from({ length: n }, (_, i) => ({
-    day: `D${i + 1}`,
-    views: Math.round(base * (1 + Math.sin(i / 2) * jitter + Math.random() * jitter)),
-    claps: Math.round(base * 0.18 * (1 + Math.random() * jitter)),
-  }));
-
-const SOURCES = [
-  { name: "Campus Feed", value: 48 },
-  { name: "Search", value: 22 },
-  { name: "Profile", value: 16 },
-  { name: "External", value: 14 },
-];
+const RANGE_OPTIONS = [
+  { value: "7d", label: "Last 7 days" },
+  { value: "30d", label: "Last 30 days" },
+  { value: "all", label: "All time" },
+] as const;
 
 const COLORS = ["hsl(var(--primary))", "#22c55e", "#f59e0b", "#ef4444"];
 
 const PostAnalytics = () => {
   const { id } = useParams();
-  const post = posts.find((p) => p.id === id) ?? posts[0];
-  const [range, setRange] = useState<RangeKey>("30d");
-  const data = seedSeries(RANGE_DAYS[range], 320);
+  const [range, setRange] = useState("30d");
 
-  const totalViews = data.reduce((a, b) => a + b.views, 0);
-  const totalClaps = data.reduce((a, b) => a + b.claps, 0);
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['post-analytics', id, range],
+    queryFn: () => api.get(`/analytics/posts/${id}`, { params: { period: range } }).then(unwrap<PostAnalyticsResponse>),
+    enabled: !!id,
+  });
+
+  if (isLoading) return <AppShell hideRight><div className="p-6"><FeedSkeleton /></div></AppShell>;
+  if (isError || !data) return <AppShell hideRight><div className="p-6"><InlineError message="Failed to load analytics" /></div></AppShell>;
+
+  const { summary, dailyViews, dailyClaps, trafficSources, topReaderCampuses } = data;
+  const totalViews = summary.totalViews;
+  const totalClaps = summary.totalClaps;
+
+  const viewsData = dailyViews.map((d) => ({ day: d.date.slice(5), views: d.count }));
+  const clapsData = dailyClaps.map((d) => ({ day: d.date.slice(5), claps: d.count }));
+  const engagementData = viewsData.map((v, i) => ({
+    day: v.day,
+    views: v.views,
+    claps: clapsData[i]?.claps ?? 0,
+  }));
 
   return (
     <AppShell hideRight>
       <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-6">
         <div className="min-w-0">
+          <Link to="/my-posts" className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground mb-2">
+            <ArrowLeft className="h-3.5 w-3.5" /> Back to My Posts
+          </Link>
           <p className="text-xs uppercase tracking-wide text-muted-foreground">Post analytics</p>
-          <h1 className="text-2xl md:text-3xl font-extrabold line-clamp-1">{post.title}</h1>
-          <div className="flex flex-wrap items-center gap-2 mt-2">
-            <Badge variant="outline">{post.category}</Badge>
-            <Badge variant="secondary">{post.campus}</Badge>
-            <span className="text-xs text-muted-foreground">{post.publishedAt} · {post.readMinutes} min read</span>
-          </div>
+          <h1 className="text-2xl md:text-3xl font-extrabold line-clamp-1">Analytics</h1>
         </div>
-        <Select value={range} onValueChange={(v) => setRange(v as RangeKey)}>
+        <Select value={range} onValueChange={(v) => setRange(v)}>
           <SelectTrigger className="w-32"><SelectValue /></SelectTrigger>
           <SelectContent>
-            <SelectItem value="7d">Last 7 days</SelectItem>
-            <SelectItem value="30d">Last 30 days</SelectItem>
-            <SelectItem value="90d">Last 90 days</SelectItem>
+            {RANGE_OPTIONS.map((r) => (
+              <SelectItem key={r.value} value={r.value}>{r.label}</SelectItem>
+            ))}
           </SelectContent>
         </Select>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-        <Stat icon={Eye} label="Views" value={totalViews} delta="+12.4%" />
-        <Stat icon={Hand} label="Claps" value={totalClaps} delta="+6.1%" />
-        <Stat icon={MessageSquare} label="Comments" value={post.comments} delta="+3" />
-        <Stat icon={UserPlus} label="New followers" value={48} delta="+8" />
+        <Stat icon={Eye} label="Views" value={totalViews} />
+        <Stat icon={Hand} label="Claps" value={totalClaps} />
+        <Stat icon={MessageSquare} label="Comments" value={summary.totalComments} />
+        <Stat icon={Share2} label="Shares" value={summary.totalShares} />
       </div>
 
       <Tabs defaultValue="overview">
@@ -84,7 +91,7 @@ const PostAnalytics = () => {
             </div>
             <div className="h-64">
               <ResponsiveContainer>
-                <AreaChart data={data}>
+                <AreaChart data={viewsData}>
                   <defs>
                     <linearGradient id="vw" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity={0.5} />
@@ -106,21 +113,21 @@ const PostAnalytics = () => {
             <div className="h-64">
               <ResponsiveContainer>
                 <PieChart>
-                  <Pie data={SOURCES} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80} paddingAngle={3}>
-                    {SOURCES.map((_, i) => <Cell key={i} fill={COLORS[i]} />)}
+                  <Pie data={trafficSources} dataKey="percentage" nameKey="source" innerRadius={50} outerRadius={80} paddingAngle={3}>
+                    {trafficSources.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
                   <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
             <ul className="mt-2 space-y-1 text-sm">
-              {SOURCES.map((s, i) => (
-                <li key={s.name} className="flex items-center justify-between">
+              {trafficSources.map((s, i) => (
+                <li key={s.source} className="flex items-center justify-between">
                   <span className="inline-flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: COLORS[i] }} />
-                    {s.name}
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: COLORS[i % COLORS.length] }} />
+                    {s.source}
                   </span>
-                  <span className="text-muted-foreground">{s.value}%</span>
+                  <span className="text-muted-foreground">{s.percentage}%</span>
                 </li>
               ))}
             </ul>
@@ -132,12 +139,7 @@ const PostAnalytics = () => {
             <h3 className="font-semibold mb-3">Readers by campus</h3>
             <div className="h-64">
               <ResponsiveContainer>
-                <BarChart data={[
-                  { campus: "UY1", readers: 1240 },
-                  { campus: "UB", readers: 880 },
-                  { campus: "IUBS", readers: 320 },
-                  { campus: "Other", readers: 210 },
-                ]}>
+                <BarChart data={topReaderCampuses.map((c) => ({ campus: c.shortCode, readers: c.viewCount }))}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="campus" stroke="hsl(var(--muted-foreground))" fontSize={11} />
                   <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} />
@@ -168,22 +170,18 @@ const PostAnalytics = () => {
 
         <TabsContent value="engagement" className="mt-4">
           <Card className="p-5">
-            <h3 className="font-semibold mb-3">Claps & comments</h3>
+            <h3 className="font-semibold mb-3">Views & claps</h3>
             <div className="h-72">
               <ResponsiveContainer>
-                <BarChart data={data}>
+                <BarChart data={engagementData}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                   <XAxis dataKey="day" stroke="hsl(var(--muted-foreground))" fontSize={11} />
                   <YAxis stroke="hsl(var(--muted-foreground))" fontSize={11} />
                   <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))", borderRadius: 8 }} />
-                  <Bar dataKey="claps" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="views" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="claps" fill="#f59e0b" radius={[6, 6, 0, 0]} />
                 </BarChart>
               </ResponsiveContainer>
-            </div>
-            <div className="mt-4 grid grid-cols-3 gap-3 text-center">
-              <Mini label="Avg read time" value="4m 12s" />
-              <Mini label="Completion rate" value="68%" />
-              <Mini label="Shares" value="124" icon={Share2} />
             </div>
           </Card>
         </TabsContent>
@@ -192,7 +190,7 @@ const PostAnalytics = () => {
   );
 };
 
-const Stat = ({ icon: Icon, label, value, delta }: any) => (
+const Stat = ({ icon: Icon, label, value }: { icon: any; label: string; value: number }) => (
   <Card className="p-4">
     <div className="flex items-center gap-3">
       <div className="h-10 w-10 rounded-lg bg-primary/15 inline-flex items-center justify-center">
@@ -200,19 +198,10 @@ const Stat = ({ icon: Icon, label, value, delta }: any) => (
       </div>
       <div>
         <div className="text-xl font-extrabold">{value.toLocaleString()}</div>
-        <div className="text-xs text-muted-foreground">{label} <span className="text-primary">{delta}</span></div>
+        <div className="text-xs text-muted-foreground">{label}</div>
       </div>
     </div>
   </Card>
-);
-
-const Mini = ({ label, value, icon: Icon }: any) => (
-  <div className="rounded-lg bg-muted/40 p-3">
-    <div className="text-lg font-bold inline-flex items-center gap-1.5">
-      {Icon && <Icon className="h-4 w-4 text-primary" />} {value}
-    </div>
-    <div className="text-xs text-muted-foreground">{label}</div>
-  </div>
 );
 
 export default PostAnalytics;

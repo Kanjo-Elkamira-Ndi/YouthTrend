@@ -212,16 +212,16 @@ Fill in your values — see [Environment Variables](#environment-variables) belo
 
 ```bash
 # Create your PostgreSQL database
-createdb youthtrend_dev
+createdb youthtrend_db
 
 # Run migrations
-npm run db:migrate --workspace=server
+npm run migrate --workspace=server
 ```
 
 **5. (Optional) Seed with mock data**
 
 ```bash
-npm run db:seed --workspace=server
+npm run seed --workspace=server
 ```
 
 ### Running the Apps
@@ -235,7 +235,7 @@ npm run dev
 **Run individually:**
 
 ```bash
-# Web frontend only — http://localhost:5173
+# Web frontend only — http://localhost:8080
 npm run dev --workspace=apps/web
 
 # API server only — http://localhost:4000

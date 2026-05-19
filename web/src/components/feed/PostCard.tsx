@@ -1,11 +1,18 @@
 import type { Post } from "@/types/post";
 import { AuthorBadge } from "@/components/common/AuthorBadge";
-import { Bookmark, MessageCircle, MoreHorizontal, Flame, Newspaper, Trophy, GraduationCap, Calendar, Theater, MessageSquare, ThumbsUp } from "lucide-react";
+import { Bookmark, MessageCircle, MoreHorizontal, Flame, Newspaper, Trophy, GraduationCap, Calendar, Theater, MessageSquare, ThumbsUp, Flag } from "lucide-react";
 import { Link } from "react-router-dom";
 import { CATEGORIES } from "@/lib/constants";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { ReportModal } from "@/components/common/ReportModal";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 type Props = { post: Post; variant?: "compact" | "featured" };
 
@@ -70,6 +77,7 @@ export const PostCard = ({ post, variant = "compact" }: Props) => {
     avatar: post.author_avatar_url ?? '',
     campus: post.campus_short_code ?? '',
   } : null;
+  const [reportOpen, setReportOpen] = useState(false);
 
   if (variant === "featured") {
     return (
@@ -106,6 +114,7 @@ export const PostCard = ({ post, variant = "compact" }: Props) => {
           </div>
           <ProgressBar />
         </div>
+        <ReportModal open={reportOpen} onOpenChange={setReportOpen} targetType="post" targetId={post.id} />
       </motion.article>
     );
   }
@@ -120,7 +129,16 @@ export const PostCard = ({ post, variant = "compact" }: Props) => {
     >
       <div className="flex items-center justify-between mb-3">
         {authorUser && <AuthorBadge user={authorUser} sub={post.published_at ? new Date(post.published_at).toLocaleDateString() : undefined} />}
-        <button className="text-muted-foreground hover:text-foreground"><MoreHorizontal className="h-4 w-4" /></button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button className="text-muted-foreground hover:text-foreground"><MoreHorizontal className="h-4 w-4" /></button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => setReportOpen(true)}>
+              <Flag className="h-4 w-4 mr-2 text-red-500" /> Report
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
       <div className="flex gap-4">
         <div className="flex-1 min-w-0 space-y-2">
@@ -148,6 +166,7 @@ export const PostCard = ({ post, variant = "compact" }: Props) => {
         <span className="inline-flex items-center gap-1"><MessageCircle className="h-3.5 w-3.5" />{post.comment_count}</span>
         <BookmarkBtn post={post} className="ml-auto" />
       </div>
+      <ReportModal open={reportOpen} onOpenChange={setReportOpen} targetType="post" targetId={post.id} />
     </motion.article>
   );
 };
