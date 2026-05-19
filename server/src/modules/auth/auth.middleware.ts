@@ -100,7 +100,7 @@ export async function requireAuth(
  * Must be used AFTER requireAuth.
  *
  * Usage:
- *   router.delete('/post/:id', requireAuth, requireRole('campus_admin', 'super_admin'), handler)
+ *   router.delete('/post/:id', requireAuth, requireRole('campus_admin', 'super_admin'),handler)
  */
 export function requireRole(...roles: UserRole[]) {
   return (req: Request, _res: Response, next: NextFunction): void => {

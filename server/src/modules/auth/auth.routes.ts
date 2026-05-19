@@ -211,7 +211,7 @@ router.patch(
 // ── GET /api/v1/auth/profile/:username ───────────────────────────────────────
 // Public profile view by username.
 // Returns published post counts, follower/following counts, and whether the
-// requesting user is following this profile (if authenticated).
+// requesting user is following this profile (if the user is authenticated).
 
 router.get(
   '/profile/:username',
