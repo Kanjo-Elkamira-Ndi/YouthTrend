@@ -62,7 +62,7 @@ export async function requireAuth(
     );
 
     if (!rows[0]) {
-      // Better Auth user exists but no application user row yet —
+      // Better Auth user exists but no application user row yet—
       // this happens if the after-signup hook hasn't run.
       return next(new UnauthorizedError('User account not fully set up. Please contact support.'));
     }
