@@ -10,8 +10,9 @@ import { useAuth } from "@/context/AuthContext";
 import { useMutation } from "@tanstack/react-query";
 import { api, unwrap } from "@/lib/api";
 import { Camera, Loader2 } from "lucide-react";
-import { useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import { toast } from "sonner";
+import { initials, resolveMediaUrl } from "@/lib/media";
 
 const Settings = () => {
   const { theme, toggleTheme } = useTheme();
@@ -23,6 +24,14 @@ const Settings = () => {
   const [department, setDepartment] = useState(user?.department ?? '');
   const [username, setUsername] = useState(user?.username ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
+
+  useEffect(() => {
+    setName(user?.full_name ?? '');
+    setBio(user?.bio ?? '');
+    setDepartment(user?.department ?? '');
+    setUsername(user?.username ?? '');
+    setEmail(user?.email ?? '');
+  }, [user]);
 
   const updateProfile = useMutation({
     mutationFn: (data: Record<string, string>) =>
@@ -58,8 +67,6 @@ const Settings = () => {
     if (name !== user?.full_name) payload.fullName = name;
     if (bio !== (user?.bio ?? '')) payload.bio = bio;
     if (department !== (user?.department ?? '')) payload.department = department;
-    if (username !== (user?.username ?? '')) payload.username = username;
-    if (email !== (user?.email ?? '')) payload.email = email;
     if (Object.keys(payload).length === 0) {
       toast.error('No changes to save.');
       return;
@@ -82,10 +89,8 @@ const Settings = () => {
             <div className="flex items-center gap-4">
               <div className="relative">
                 <Avatar className="h-20 w-20">
-                  <AvatarImage src={user?.avatar_url
-                    ? (user.avatar_url.startsWith('http') ? user.avatar_url : `${import.meta.env.VITE_API_BASE_URL}${user.avatar_url}`)
-                    : undefined} />
-                  <AvatarFallback className="text-lg">{user?.full_name?.charAt(0)?.toUpperCase()}</AvatarFallback>
+                  <AvatarImage src={resolveMediaUrl(user?.avatar_url)} />
+                  <AvatarFallback className="text-lg">{initials(user?.full_name)}</AvatarFallback>
                 </Avatar>
                 <button
                   type="button"
@@ -109,12 +114,17 @@ const Settings = () => {
               <div>
                 <div className="font-semibold">{user?.full_name}</div>
                 <div className="text-sm text-muted-foreground">{user?.email}</div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  {user?.role?.replace('_', ' ')}
+                  {user?.campus_name ? ` · ${user.campus_name}` : ''}
+                  {user?.department ? ` · ${user.department}` : ''}
+                </div>
               </div>
             </div>
 
             <Field label="Full Name" value={name} onChange={setName} />
-            <Field label="Username" value={username} onChange={setUsername} />
-            <Field label="Email" value={email} onChange={setEmail} type="email" />
+            <Field label="Username" value={username} readOnly />
+            <Field label="Email" value={email} readOnly type="email" />
             <div className="space-y-1.5">
               <Label className="text-sm font-semibold">Bio</Label>
               <Input value={bio} onChange={(e) => setBio(e.target.value)} />

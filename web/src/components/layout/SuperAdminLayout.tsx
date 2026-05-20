@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/common/Logo";
 import { ThemeToggle } from "@/components/common/Toggle";
+import { useAuth } from "@/context/AuthContext";
+import { initials, resolveMediaUrl } from "@/lib/media";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -56,7 +58,17 @@ const TITLES: Record<string, string> = {
 // near-black sidebar background, in both themes
 const SIDEBAR_BG = "bg-[#0F172A] dark:bg-[#080C14]";
 
-const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => (
+const UserAvatar = ({ name, avatarUrl, className }: { name?: string | null; avatarUrl?: string | null; className: string }) => (
+  <div className={`${className} bg-slate-800 overflow-hidden inline-flex items-center justify-center`}>
+    {resolveMediaUrl(avatarUrl) ? (
+      <img src={resolveMediaUrl(avatarUrl)} alt={name ?? ""} className="h-full w-full object-cover" />
+    ) : (
+      <span className="text-xs font-bold text-slate-100">{initials(name)}</span>
+    )}
+  </div>
+);
+
+const SidebarContent = ({ onNavigate, user, signOut }: { onNavigate?: () => void; user: ReturnType<typeof useAuth>["user"]; signOut: () => Promise<void> }) => (
   <div className={`relative flex h-full flex-col text-slate-200 ${SIDEBAR_BG}`}>
     {/* Right accent line */}
     <div className="absolute top-0 right-0 h-full w-[2px] bg-primary" />
@@ -127,12 +139,12 @@ const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => (
         </p>
       </div>
       <div className="border-t border-white/5 pt-3 flex items-center gap-2">
-        <img src="https://i.pravatar.cc/150?u=jordan" alt="" className="h-9 w-9 rounded-full ring-1 ring-white/10 object-cover" />
+        <UserAvatar name={user?.full_name} avatarUrl={user?.avatar_url} className="h-9 w-9 rounded-full ring-1 ring-white/10" />
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold text-slate-100 truncate">Jordan Ndi</div>
+          <div className="text-sm font-semibold text-slate-100 truncate">{user?.full_name ?? "Super Admin"}</div>
           <div className="text-[11px] text-primary font-semibold">Super Admin</div>
         </div>
-        <button aria-label="Sign out" className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-white/5 text-slate-400">
+        <button aria-label="Sign out" onClick={signOut} className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-white/5 text-slate-400">
           <LogOut className="h-4 w-4" />
         </button>
       </div>
@@ -143,13 +155,14 @@ const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => (
 const SuperAdminLayout = () => {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
+  const { user, signOut } = useAuth();
   const title = TITLES[pathname] ?? "Super Admin";
 
   return (
     <div className="min-h-screen bg-background text-foreground flex">
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-60 shrink-0 relative">
-        <SidebarContent />
+        <SidebarContent user={user} signOut={signOut} />
       </aside>
 
       {/* Mobile drawer */}
@@ -167,7 +180,7 @@ const SuperAdminLayout = () => {
             >
               <X className="h-4 w-4" />
             </button>
-            <SidebarContent onNavigate={() => setOpen(false)} />
+            <SidebarContent onNavigate={() => setOpen(false)} user={user} signOut={signOut} />
           </aside>
         </div>
       )}
@@ -212,15 +225,15 @@ const SuperAdminLayout = () => {
               <ThemeToggle />
               <DropdownMenu>
                 <DropdownMenuTrigger className="ml-1 inline-flex items-center gap-1.5 rounded-md p-1 hover:bg-white/10">
-                  <img src="https://i.pravatar.cc/150?u=jordan" alt="" className="h-7 w-7 rounded-full object-cover ring-1 ring-white/10" />
+                  <UserAvatar name={user?.full_name} avatarUrl={user?.avatar_url} className="h-7 w-7 rounded-full ring-1 ring-white/10" />
                   <ChevronDown className="h-3.5 w-3.5 text-slate-400" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44">
                   <DropdownMenuItem asChild>
-                    <Link to="/profile/jordan.ndi">Profile</Link>
+                    <Link to={`/profile/${user?.username ?? ''}`}>Profile</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-red-500 focus:text-red-500">Sign Out</DropdownMenuItem>
+                  <DropdownMenuItem onClick={signOut} className="text-red-500 focus:text-red-500">Sign Out</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>

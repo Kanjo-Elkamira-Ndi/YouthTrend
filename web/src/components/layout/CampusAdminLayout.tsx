@@ -19,6 +19,8 @@ import {
 import { Logo } from "@/components/common/Logo";
 import { ThemeToggle } from "@/components/common/Toggle";
 import { mockCampus } from "@/mock/campusAdmin";
+import { useAuth } from "@/context/AuthContext";
+import { initials, resolveMediaUrl } from "@/lib/media";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -48,7 +50,17 @@ const TITLES: Record<string, string> = {
   "/campus-admin/settings": "Campus Settings",
 };
 
-const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => (
+const UserAvatar = ({ name, avatarUrl, className }: { name?: string | null; avatarUrl?: string | null; className: string }) => (
+  <div className={`${className} bg-secondary overflow-hidden inline-flex items-center justify-center`}>
+    {resolveMediaUrl(avatarUrl) ? (
+      <img src={resolveMediaUrl(avatarUrl)} alt={name ?? ""} className="h-full w-full object-cover" />
+    ) : (
+      <span className="text-xs font-bold">{initials(name)}</span>
+    )}
+  </div>
+);
+
+const SidebarContent = ({ onNavigate, user, signOut }: { onNavigate?: () => void; user: ReturnType<typeof useAuth>["user"]; signOut: () => Promise<void> }) => (
   <div className="flex h-full flex-col">
     {/* Logo + Campus identity */}
     <div className="px-5 pt-5 pb-4 border-b border-border">
@@ -111,12 +123,14 @@ const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => (
         Back to Campus Feed
       </Link>
       <div className="border-t border-border pt-3 flex items-center gap-2">
-        <img src="https://i.pravatar.cc/150?u=fatima" alt="" className="h-9 w-9 rounded-full ring-1 ring-border object-cover" />
+        <UserAvatar name={user?.full_name} avatarUrl={user?.avatar_url} className="h-9 w-9 rounded-full ring-1 ring-border" />
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-semibold truncate">Fatima Nkemdirim</div>
-          <div className="text-[11px] text-muted-foreground">Campus Admin</div>
+          <div className="text-sm font-semibold truncate">{user?.full_name ?? "Campus Admin"}</div>
+          <div className="text-[11px] text-muted-foreground">
+            {user?.campus_short_code ? `${user.campus_short_code} · ` : ""}{user?.role.replace('_', ' ') ?? "Campus Admin"}
+          </div>
         </div>
-        <button aria-label="Sign out" className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-secondary text-muted-foreground">
+        <button aria-label="Sign out" onClick={signOut} className="h-8 w-8 inline-flex items-center justify-center rounded-md hover:bg-secondary text-muted-foreground">
           <LogOut className="h-4 w-4" />
         </button>
       </div>
@@ -127,13 +141,14 @@ const SidebarContent = ({ onNavigate }: { onNavigate?: () => void }) => (
 const CampusAdminLayout = () => {
   const [open, setOpen] = useState(false);
   const { pathname } = useLocation();
+  const { user, signOut } = useAuth();
   const title = TITLES[pathname] ?? "Campus Admin";
 
   return (
     <div className="min-h-screen bg-background text-foreground flex">
       {/* Desktop sidebar */}
       <aside className="hidden lg:flex w-60 shrink-0 border-r border-border bg-secondary/40">
-        <SidebarContent />
+        <SidebarContent user={user} signOut={signOut} />
       </aside>
 
       {/* Mobile sidebar drawer */}
@@ -151,7 +166,7 @@ const CampusAdminLayout = () => {
             >
               <X className="h-4 w-4" />
             </button>
-            <SidebarContent onNavigate={() => setOpen(false)} />
+            <SidebarContent onNavigate={() => setOpen(false)} user={user} signOut={signOut} />
           </aside>
         </div>
       )}
@@ -183,15 +198,15 @@ const CampusAdminLayout = () => {
               <ThemeToggle />
               <DropdownMenu>
                 <DropdownMenuTrigger className="ml-1 inline-flex items-center gap-1.5 rounded-md p-1 hover:bg-secondary">
-                  <img src="https://i.pravatar.cc/150?u=fatima" alt="" className="h-7 w-7 rounded-full object-cover ring-1 ring-border" />
+                  <UserAvatar name={user?.full_name} avatarUrl={user?.avatar_url} className="h-7 w-7 rounded-full ring-1 ring-border" />
                   <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-44">
                   <DropdownMenuItem asChild>
-                    <Link to="/profile/fatima.nkemdirim">Profile</Link>
+                    <Link to={`/profile/${user?.username ?? ''}`}>Profile</Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem className="text-red-500 focus:text-red-500">Sign Out</DropdownMenuItem>
+                  <DropdownMenuItem onClick={signOut} className="text-red-500 focus:text-red-500">Sign Out</DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
             </div>
