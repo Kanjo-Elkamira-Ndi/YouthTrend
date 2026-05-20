@@ -14,8 +14,21 @@ import type { WriterUpgradeFull } from "@/types/writer";
 import { FeedSkeleton } from "@/components/common/Skeletons";
 import { InlineError } from "@/components/common/InlineError";
 import { toast } from "sonner";
+import type { AxiosError } from "axios";
 
 const TOPICS = ["Academics", "Gist", "Sports", "News", "Events", "Culture", "Opinion", "Tech"];
+
+function apiErrorMessage(err: unknown, fallback: string): string {
+  const axiosErr = err as AxiosError<{
+    error?: {
+      message?: string;
+      errors?: Record<string, string[]>;
+    };
+  }>;
+  const fieldErrors = axiosErr.response?.data?.error?.errors;
+  const firstFieldError = fieldErrors ? Object.values(fieldErrors)[0]?.[0] : undefined;
+  return firstFieldError ?? axiosErr.response?.data?.error?.message ?? fallback;
+}
 
 const WriterUpgradeRequest = () => {
   const [topics, setTopics] = useState<string[]>([]);
@@ -43,13 +56,20 @@ const WriterUpgradeRequest = () => {
     onSuccess: () => {
       navigate('/check-inbox?mode=upgrade');
     },
-    onError: () => toast.error('Failed to submit application.'),
+    onError: (err: unknown) => toast.error(apiErrorMessage(err, 'Failed to submit application.')),
   });
 
   const existingRequest = existing && existing.length > 0 ? existing[0] : null;
 
   const toggle = (t: string) =>
-    setTopics((prev) => (prev.includes(t) ? prev.filter((x) => x !== t) : [...prev, t]));
+    setTopics((prev) => {
+      if (prev.includes(t)) return prev.filter((x) => x !== t);
+      if (prev.length >= 4) {
+        toast.error('Choose up to 4 topics.');
+        return prev;
+      }
+      return [...prev, t];
+    });
 
   if (isLoading) {
     return (
@@ -100,7 +120,7 @@ const WriterUpgradeRequest = () => {
             <p className="text-sm text-muted-foreground mt-2 italic">"{existingRequest.reviewer_note}"</p>
           )}
           <p className="text-sm text-muted-foreground mt-2">
-            You can submit a new application after 30 days.
+            You can submit a new application after 14 days.
           </p>
           <Button className="mt-6" onClick={() => window.location.reload()}>
             Submit new application
@@ -145,15 +165,17 @@ const WriterUpgradeRequest = () => {
         <div className="yt-card p-5 space-y-5">
           <div>
             <Label>Topics you'll cover</Label>
+            <p className="text-xs text-muted-foreground mt-1">Choose 1 to 4 topics.</p>
             <div className="mt-2 flex flex-wrap gap-2">
               {TOPICS.map((t) => (
                 <button
                   key={t}
                   onClick={() => toggle(t)}
+                  disabled={!topics.includes(t) && topics.length >= 4}
                   className={`px-3 py-1.5 rounded-full text-sm border transition ${
                     topics.includes(t)
                       ? "bg-primary text-primary-foreground border-primary"
-                      : "border-border hover:bg-muted"
+                      : "border-border hover:bg-muted disabled:opacity-40 disabled:hover:bg-transparent"
                   }`}
                 >
                   {t}
