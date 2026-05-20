@@ -31,6 +31,8 @@ export interface UpdateProfileInput {
   yearOfStudy?: number;
   avatarUrl?:   string;
   matricule?:   string;
+  username?:    string;
+  email?:       string;
 }
 
 export interface AppUser {
@@ -240,6 +242,26 @@ export const AuthService = {
     }
     if (input.matricule !== undefined) {
       sets.push(`matricule = $${idx++}`); vals.push(input.matricule);
+    }
+    if (input.username !== undefined) {
+      const existing = await query(
+        `SELECT id FROM users WHERE username = $1 AND id != $2 LIMIT 1`,
+        [input.username, userId],
+      );
+      if (existing.rows.length > 0) {
+        throw new ConflictError('Username is already taken.');
+      }
+      sets.push(`username = $${idx++}`); vals.push(input.username);
+    }
+    if (input.email !== undefined) {
+      const existing = await query(
+        `SELECT id FROM users WHERE email = $1 AND id != $2 LIMIT 1`,
+        [input.email, userId],
+      );
+      if (existing.rows.length > 0) {
+        throw new ConflictError('Email is already in use.');
+      }
+      sets.push(`email = $${idx++}`); vals.push(input.email);
     }
 
     if (sets.length === 0) {

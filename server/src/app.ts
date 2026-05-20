@@ -2,6 +2,7 @@ import express, { Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import * as path from 'path';
 import { toNodeHandler } from 'better-auth/node';
 
 import { corsOptions } from './config/cors';
@@ -54,6 +55,9 @@ export function createApp(): Application {
 
   // ── Global rate limiter for all other API routes ────────────────────────────
   app.use('/api', defaultLimiter);
+
+  // ── Static files (uploaded avatars) ─────────────────────────────────────────
+  app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
   // ── Application routes ───────────────────────────────────────────────────────
   app.use('/health', healthRoutes);

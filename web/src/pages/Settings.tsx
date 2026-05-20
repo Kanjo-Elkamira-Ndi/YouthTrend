@@ -4,26 +4,46 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import { Avatar, AvatarImage, AvatarFallback } from "@/components/ui/avatar";
 import { useTheme } from "@/context/ThemeContext";
 import { useAuth } from "@/context/AuthContext";
 import { useMutation } from "@tanstack/react-query";
 import { api, unwrap } from "@/lib/api";
-import { useState } from "react";
+import { Camera, Loader2 } from "lucide-react";
+import { useState, useRef } from "react";
 import { toast } from "sonner";
 
 const Settings = () => {
   const { theme, toggleTheme } = useTheme();
   const { user, refetch } = useAuth();
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [name, setName] = useState(user?.full_name ?? '');
   const [bio, setBio] = useState(user?.bio ?? '');
   const [department, setDepartment] = useState(user?.department ?? '');
+  const [username, setUsername] = useState(user?.username ?? '');
+  const [email, setEmail] = useState(user?.email ?? '');
 
   const updateProfile = useMutation({
-    mutationFn: (data: { full_name?: string; bio?: string; department?: string }) =>
+    mutationFn: (data: Record<string, string>) =>
       api.patch('/auth/me', data).then(unwrap),
     onSuccess: () => { refetch(); toast.success('Profile updated.'); },
-    onError: () => toast.error('Failed to update profile.'),
+    onError: (err: unknown) => {
+      const msg = err instanceof Error ? err.message : 'Failed to update profile.';
+      toast.error(msg);
+    },
+  });
+
+  const uploadAvatar = useMutation({
+    mutationFn: (file: File) => {
+      const form = new FormData();
+      form.append('avatar', file);
+      return api.post('/auth/avatar', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }).then(unwrap);
+    },
+    onSuccess: () => { refetch(); toast.success('Avatar updated.'); },
+    onError: () => toast.error('Failed to upload avatar.'),
   });
 
   const updateLanguage = useMutation({
@@ -34,7 +54,17 @@ const Settings = () => {
   });
 
   const handleSave = () => {
-    updateProfile.mutate({ full_name: name, bio, department });
+    const payload: Record<string, string> = {};
+    if (name !== user?.full_name) payload.fullName = name;
+    if (bio !== (user?.bio ?? '')) payload.bio = bio;
+    if (department !== (user?.department ?? '')) payload.department = department;
+    if (username !== (user?.username ?? '')) payload.username = username;
+    if (email !== (user?.email ?? '')) payload.email = email;
+    if (Object.keys(payload).length === 0) {
+      toast.error('No changes to save.');
+      return;
+    }
+    updateProfile.mutate(payload);
   };
 
   return (
@@ -49,9 +79,42 @@ const Settings = () => {
           </TabsList>
 
           <TabsContent value="account" className="pt-6 space-y-4">
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <Avatar className="h-20 w-20">
+                  <AvatarImage src={user?.avatar_url
+                    ? (user.avatar_url.startsWith('http') ? user.avatar_url : `${import.meta.env.VITE_API_BASE_URL}${user.avatar_url}`)
+                    : undefined} />
+                  <AvatarFallback className="text-lg">{user?.full_name?.charAt(0)?.toUpperCase()}</AvatarFallback>
+                </Avatar>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadAvatar.isPending}
+                  className="absolute -bottom-1 -right-1 bg-primary text-primary-foreground rounded-full p-1.5 shadow hover:bg-primary/90 transition-colors disabled:opacity-50"
+                >
+                  {uploadAvatar.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) uploadAvatar.mutate(file);
+                  }}
+                />
+              </div>
+              <div>
+                <div className="font-semibold">{user?.full_name}</div>
+                <div className="text-sm text-muted-foreground">{user?.email}</div>
+              </div>
+            </div>
+
             <Field label="Full Name" value={name} onChange={setName} />
-            <Field label="Username" value={user?.username ?? ''} readOnly />
-            <Field label="Email" value={user?.email ?? ''} readOnly />
+            <Field label="Username" value={username} onChange={setUsername} />
+            <Field label="Email" value={email} onChange={setEmail} type="email" />
             <div className="space-y-1.5">
               <Label className="text-sm font-semibold">Bio</Label>
               <Input value={bio} onChange={(e) => setBio(e.target.value)} />
@@ -100,10 +163,10 @@ const Settings = () => {
   );
 };
 
-const Field = ({ label, value, onChange, readOnly }: { label: string; value?: string; onChange?: (v: string) => void; readOnly?: boolean }) => (
+const Field = ({ label, value, onChange, readOnly, type }: { label: string; value?: string; onChange?: (v: string) => void; readOnly?: boolean; type?: string }) => (
   <div className="space-y-1.5">
     <Label className="text-sm font-semibold">{label}</Label>
-    <Input value={value} onChange={(e) => onChange?.(e.target.value)} readOnly={readOnly} />
+    <Input value={value} onChange={(e) => onChange?.(e.target.value)} readOnly={readOnly} type={type ?? 'text'} />
   </div>
 );
 
