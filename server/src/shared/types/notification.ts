@@ -9,6 +9,8 @@ export type NotificationType =
   | 'campus_announcement'
   | 'writer_upgrade_approved'
   | 'writer_upgrade_declined'
+  | 'campus_join_approved'
+  | 'campus_join_declined'
   | 'system';
 
 export type NotificationTargetType =

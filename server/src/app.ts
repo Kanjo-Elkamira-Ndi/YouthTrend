@@ -27,6 +27,7 @@ import announcementsRoutes from './modules/announcements/announcements.routes';
 import searchRoutes from './modules/search/search.routes';
 import analyticsRoutes from './modules/analytics/analytics.routes';
 import superAdminRoutes from './modules/super-admin/super-admin.routes';
+import campusJoinRoutes from './modules/campus-join/campus-join.routes';
 export function createApp(): Application {
   const app = express();
 
@@ -76,6 +77,7 @@ export function createApp(): Application {
   app.use('/api/v1/search',          searchRoutes);
   app.use('/api/v1/analytics',       analyticsRoutes);
   app.use('/api/v1/super-admin',     superAdminRoutes);
+  app.use('/api/v1/campus-join',     campusJoinRoutes);
   // ── 404 + error handlers ────────────────────────────────────────────────────
   app.use(notFoundHandler);
   app.use(errorHandler);
