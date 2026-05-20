@@ -16,6 +16,7 @@ import type { Comment } from "@/types/comment";
 import { FeedSkeleton } from "@/components/common/Skeletons";
 import { InlineError } from "@/components/common/InlineError";
 import { cn } from "@/lib/utils";
+import { initials, resolveMediaUrl } from "@/lib/media";
 import { toast } from "sonner";
 import { ReportModal } from "@/components/common/ReportModal";
 import {
@@ -211,7 +212,7 @@ const PostView = () => {
 
           {user && (
             <div className="flex gap-3 mb-8">
-              <img src={user.avatar_url ?? ''} className="h-10 w-10 rounded-full" alt="" />
+              <InlineAvatar name={user.full_name} src={user.avatar_url} className="h-10 w-10" />
               <div className="flex-1 space-y-2">
                 <Textarea
                   placeholder="Add to the discussion..."
@@ -292,7 +293,7 @@ const CommentThread = ({
 }: {
   comment: Comment;
   postId: string;
-  user: { id: string; avatar_url: string | null } | null;
+  user: { id: string; full_name?: string | null; avatar_url: string | null } | null;
   replyTo: string | null;
   replyBody: string;
   editingId: string | null;
@@ -314,7 +315,7 @@ const CommentThread = ({
   return (
     <div className="space-y-4">
       <div className="flex gap-3">
-        <img src={comment.author_avatar_url ?? ''} className="h-9 w-9 rounded-full shrink-0" alt={comment.author_name ?? ''} />
+        <InlineAvatar name={comment.author_name} src={comment.author_avatar_url} className="h-9 w-9 shrink-0" />
         <div className="flex-1 yt-card p-3 bg-secondary/50">
           <div className="flex items-center gap-2 mb-1">
             <Link to={`/profile/${comment.author_username}`} className="text-sm font-semibold hover:underline">
@@ -383,7 +384,7 @@ const CommentThread = ({
       {comment.replies?.map((reply) => (
         <div key={reply.id} className="ml-12 space-y-4">
           <div className="flex gap-3">
-            <img src={reply.author_avatar_url ?? ''} className="h-8 w-8 rounded-full shrink-0" alt={reply.author_name ?? ''} />
+            <InlineAvatar name={reply.author_name} src={reply.author_avatar_url} className="h-8 w-8 shrink-0" />
             <div className="flex-1 yt-card p-3 bg-secondary/50">
               <div className="flex items-center gap-2 mb-1">
                 <Link to={`/profile/${reply.author_username}`} className="text-sm font-semibold hover:underline">
@@ -432,6 +433,16 @@ const ActionBtn = ({ icon, label, onClick }: { icon: React.ReactNode; label?: nu
     <span>{icon}</span>
     {label !== undefined && <span className="text-[9px] text-muted-foreground">{typeof label === "number" && label >= 1000 ? (label / 1000).toFixed(1) + "k" : label}</span>}
   </button>
+);
+
+const InlineAvatar = ({ name, src, className }: { name?: string | null; src?: string | null; className: string }) => (
+  <div className={`${className} rounded-full bg-secondary overflow-hidden inline-flex items-center justify-center`}>
+    {resolveMediaUrl(src) ? (
+      <img src={resolveMediaUrl(src)} className="h-full w-full object-cover" alt={name ?? ""} />
+    ) : (
+      <span className="text-xs font-bold">{initials(name)}</span>
+    )}
+  </div>
 );
 
 export default PostView;

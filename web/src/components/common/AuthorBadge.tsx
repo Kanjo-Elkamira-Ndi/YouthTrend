@@ -1,5 +1,6 @@
 import { User } from "@/types";
 import { Link } from "react-router-dom";
+import { initials, resolveMediaUrl } from "@/lib/media";
 
 type Props = { user: User; size?: "sm" | "md"; showCampus?: boolean; sub?: string };
 
@@ -7,7 +8,13 @@ export const AuthorBadge = ({ user, size = "md", showCampus = true, sub }: Props
   const av = size === "sm" ? "h-7 w-7" : "h-9 w-9";
   return (
     <div className="flex items-center gap-2 min-w-0">
-      <img src={user.avatar} alt={user.name} className={`${av} rounded-full object-cover ring-1 ring-border`} />
+      <div className={`${av} rounded-full bg-secondary overflow-hidden ring-1 ring-border shrink-0 inline-flex items-center justify-center`}>
+        {resolveMediaUrl(user.avatar) ? (
+          <img src={resolveMediaUrl(user.avatar)} alt={user.name} className="h-full w-full object-cover" />
+        ) : (
+          <span className="text-[10px] font-bold">{initials(user.name)}</span>
+        )}
+      </div>
       <div className="min-w-0">
         <div className="flex items-center gap-1.5 min-w-0">
           <Link to={`/profile/${user.username}`} className="text-sm font-semibold truncate hover:underline">
