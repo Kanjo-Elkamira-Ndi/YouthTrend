@@ -260,6 +260,7 @@ router.patch(
 router.post(
   '/:id/publish',
   requireAuth,
+  requireRole('writer', 'campus_admin', 'super_admin'),
   asyncHandler(async (req, res) => {
     const post = await PostsService.publish(p(req.params.id), req.user!.id);
     return sendSuccess(res, post);

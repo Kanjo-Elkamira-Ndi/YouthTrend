@@ -35,6 +35,8 @@ const Write = () => {
   const [visibility, setVisibility] = useState<"public" | "campus_only">("campus_only");
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [currentPostId, setCurrentPostId] = useState<string | null>(postId ?? null);
+  const currentPostIdRef = useRef(currentPostId);
+  useEffect(() => { currentPostIdRef.current = currentPostId; }, [currentPostId]);
   const [autoSaveState, setAutoSaveState] = useState<"idle" | "saving" | "saved" | "failed">("idle");
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout>>();
   const [publishOpen, setPublishOpen] = useState(false);
@@ -74,7 +76,7 @@ const Write = () => {
 
   const updateMutation = useMutation({
     mutationFn: (draftData: Record<string, unknown>) =>
-      api.patch('/posts/' + currentPostId, draftData).then(unwrap),
+      api.patch('/posts/' + currentPostIdRef.current, draftData).then(unwrap),
     onSuccess: () => setAutoSaveState("saved"),
     onError: (err: unknown) => {
       setAutoSaveState("failed");
@@ -117,7 +119,7 @@ const Write = () => {
       }
 
       try {
-        if (currentPostId) {
+        if (currentPostIdRef.current) {
           await updateMutation.mutateAsync(draftData);
         } else {
           await createMutation.mutateAsync(draftData);
@@ -126,12 +128,12 @@ const Write = () => {
         setAutoSaveState("failed");
       }
     }, 1500);
-  }, [getDraftData, currentPostId, updateMutation, createMutation, canWrite]);
+  }, [getDraftData, updateMutation, createMutation, canWrite]);
 
   useEffect(() => {
     autoSave();
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
-  }, [title, subtitle, body, category, tags, visibility, isAnonymous]);
+  }, [autoSave]);
 
   const handleSaveDraft = async () => {
     if (!canWrite) {
@@ -141,7 +143,7 @@ const Write = () => {
     const draftData = getDraftData();
     setAutoSaveState("saving");
     try {
-      if (currentPostId) {
+      if (currentPostIdRef.current) {
         await updateMutation.mutateAsync(draftData);
       } else {
         await createMutation.mutateAsync(draftData);
@@ -162,7 +164,8 @@ const Write = () => {
       toast.error("Add a title, category, and body before publishing.");
       return;
     }
-    if (!currentPostId) {
+    const id = currentPostIdRef.current;
+    if (!id) {
       const draftData = getDraftData();
       try {
         const created = await createMutation.mutateAsync(draftData);
@@ -172,7 +175,11 @@ const Write = () => {
         toast.error(apiErrorMessage(err, "Failed to publish."));
       }
     } else {
-      publishMutation.mutate(currentPostId);
+      try {
+        await publishMutation.mutateAsync(id);
+      } catch (err: unknown) {
+        toast.error(apiErrorMessage(err, "Failed to publish."));
+      }
     }
   };
 
