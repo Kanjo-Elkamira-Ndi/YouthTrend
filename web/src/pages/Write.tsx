@@ -5,13 +5,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Upload } from "lucide-react";
+import { ArrowLeft, Upload, X, Loader2 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { CATEGORIES } from "@/lib/constants";
 import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
 import { useQuery } from "@tanstack/react-query";
 import { api, unwrap } from "@/lib/api";
+import { resolveMediaUrl } from "@/lib/media";
 import { useAuth } from "@/context/AuthContext";
 import type { Post } from "@/types/post";
 import type { AxiosError } from "axios";
@@ -50,9 +51,12 @@ const Write = () => {
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [coverUrl, setCoverUrl] = useState("");
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
   const postIdRef = useRef<string | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout>>();
-  const formKey = postId ?? '__new__';
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const canWrite = user?.role === 'writer' || user?.role === 'campus_admin' || user?.role === 'super_admin';
 
   // Reset when navigating to a different post or to new post
@@ -60,6 +64,7 @@ const Write = () => {
     postIdRef.current = postId ?? null;
     setTitle(""); setSubtitle(""); setBody(""); setCategory("");
     setTags([]); setVisibility("campus_only"); setIsAnonymous(false);
+    setCoverUrl(""); setDragOver(false);
   }, [postId]);
 
   const { data: editPost, isLoading: editLoading } = useQuery({
@@ -77,6 +82,7 @@ const Write = () => {
       setTags(editPost.tags);
       setVisibility(editPost.visibility);
       setIsAnonymous(editPost.is_anonymous);
+      setCoverUrl(editPost.cover_url ?? "");
       postIdRef.current = editPost.id;
     }
   }, [editPost]);
@@ -90,17 +96,36 @@ const Write = () => {
       tags: tags.length ? tags : undefined,
       visibility,
       isAnonymous,
+      coverUrl: coverUrl || undefined,
     };
+  }
+
+  async function uploadCoverFile(file: File) {
+    setUploadingCover(true);
+    try {
+      const form = new FormData();
+      form.append('cover', file);
+      const res = await api.post('/posts/cover', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const { url } = unwrap<{ url: string }>(res);
+      setCoverUrl(url);
+      toast.success('Cover image uploaded.');
+    } catch (err: unknown) {
+      toast.error(apiErrorMessage(err, 'Failed to upload cover image.'));
+    } finally {
+      setUploadingCover(false);
+    }
   }
 
   async function saveDraft(showToast: boolean) {
     if (!canWrite) {
-      console.log('[Write] Cannot save - not a writer');
+      if (showToast) console.log('[Write] Cannot save - not a writer');
       return;
     }
     const data = getDraftData();
-    if (!data.title || !data.body || !data.category) {
-      console.log('[Write] Cannot save - incomplete data');
+    if (!data.title || data.title.length < 5 || !data.body || !data.category) {
+      if (showToast) toast.error('Title needs at least 5 characters. Add a body and category too.');
       return;
     }
     setSaving(true);
@@ -130,7 +155,7 @@ const Write = () => {
       saveDraft(false).catch(() => {});
     }, 2000);
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
-  }, [title, subtitle, body, category, tags, visibility, isAnonymous, canWrite]);
+  }, [title, subtitle, body, category, tags, visibility, isAnonymous, coverUrl, canWrite]);
 
   const handleSaveDraft = () => saveDraft(true);
 
@@ -165,6 +190,25 @@ const Write = () => {
       setPublishing(false);
     }
   };
+
+  function handleCoverDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith('image/')) uploadCoverFile(file);
+  }
+
+  function handleCoverDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(true);
+  }
+
+  function handleCoverDragLeave() { setDragOver(false); }
+
+  function handleCoverFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) uploadCoverFile(file);
+  }
 
   if (postId && editLoading) {
     return (
@@ -227,10 +271,42 @@ const Write = () => {
             onChange={(e) => setSubtitle(e.target.value)}
           />
 
-          <div className="border-2 border-dashed border-border rounded-xl p-10 text-center hover:border-primary/60 transition-colors cursor-pointer">
-            <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground">Drag & drop a cover image, or click to upload</p>
-          </div>
+          <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverFileChange} />
+
+          {coverUrl ? (
+            <div className="relative rounded-xl overflow-hidden group">
+              <img src={resolveMediaUrl(coverUrl)} alt="Cover" className="w-full h-48 object-cover" />
+              <div className="absolute inset-0 bg-black/50 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button type="button" size="sm" variant="secondary" onClick={() => coverInputRef.current?.click()} disabled={uploadingCover}>
+                  {uploadingCover ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Change'}
+                </Button>
+                <Button type="button" size="sm" variant="destructive" onClick={() => setCoverUrl("")}>
+                  <X className="h-4 w-4 mr-1" /> Remove
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div
+              onDrop={handleCoverDrop}
+              onDragOver={handleCoverDragOver}
+              onDragLeave={handleCoverDragLeave}
+              onClick={() => coverInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-xl p-10 text-center transition-colors cursor-pointer ${
+                dragOver
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:border-primary/60'
+              }`}
+            >
+              {uploadingCover ? (
+                <Loader2 className="h-6 w-6 mx-auto text-muted-foreground mb-2 animate-spin" />
+              ) : (
+                <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
+              )}
+              <p className="text-sm text-muted-foreground">
+                {uploadingCover ? 'Uploading...' : 'Drag & drop a cover image, or click to upload'}
+              </p>
+            </div>
+          )}
 
           <Textarea
             rows={20}

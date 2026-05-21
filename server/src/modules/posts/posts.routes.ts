@@ -27,6 +27,9 @@
 
 import { Router }        from 'express';
 import { z }             from 'zod';
+import multer            from 'multer';
+import path              from 'path';
+import fs                from 'fs';
 import { PostsService }  from './posts.service';
 import {
   requireAuth,
@@ -42,10 +45,35 @@ import {
   sendNoContent,
   sendPaginated,
 }                        from '../../shared/utils/response';
-import { ForbiddenError } from '../../shared/errors/AppError';
+import { ForbiddenError, BadRequestError } from '../../shared/errors/AppError';
 
 const router = Router();
 const p = (v: string | string[]): string => (Array.isArray(v) ? v[0] : v);
+
+// ── Cover image upload ────────────────────────────────────────────────────────
+
+const coversDir = path.join(__dirname, '..', '..', '..', 'uploads', 'covers');
+fs.mkdirSync(coversDir, { recursive: true });
+
+const coverStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, coversDir),
+  filename:    (_req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.jpg';
+    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+  },
+});
+
+const uploadCover = multer({
+  storage:    coverStorage,
+  limits:     { fileSize: 10 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (!file.mimetype.startsWith('image/')) {
+      cb(new Error('Only image files are allowed.'));
+      return;
+    }
+    cb(null, true);
+  },
+});
 
 // ── Schemas ───────────────────────────────────────────────────────────────────
 
@@ -215,6 +243,19 @@ router.get(
       viewerIp:   typeof req.ip === 'string' ? req.ip : undefined,
     });
     return sendSuccess(res, post);
+  }),
+);
+
+// ── POST /api/v1/posts/cover — upload cover image ──────────────────────────
+router.post(
+  '/cover',
+  requireAuth,
+  requireRole('writer', 'campus_admin', 'super_admin'),
+  uploadCover.single('cover'),
+  asyncHandler(async (req, res) => {
+    if (!req.file) throw new BadRequestError('No file provided.');
+    const coverUrl = `/uploads/covers/${req.file.filename}`;
+    return sendCreated(res, { url: coverUrl });
   }),
 );
 
