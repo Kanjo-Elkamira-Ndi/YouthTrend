@@ -50,9 +50,17 @@ const Write = () => {
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [saving, setSaving] = useState(false);
   const [publishing, setPublishing] = useState(false);
-  const postIdRef = useRef<string | null>(postId ?? null);
+  const postIdRef = useRef<string | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout>>();
+  const formKey = postId ?? '__new__';
   const canWrite = user?.role === 'writer' || user?.role === 'campus_admin' || user?.role === 'super_admin';
+
+  // Reset when navigating to a different post or to new post
+  useEffect(() => {
+    postIdRef.current = postId ?? null;
+    setTitle(""); setSubtitle(""); setBody(""); setCategory("");
+    setTags([]); setVisibility("campus_only"); setIsAnonymous(false);
+  }, [postId]);
 
   const { data: editPost, isLoading: editLoading } = useQuery({
     queryKey: ['post-edit', postId],
@@ -86,20 +94,30 @@ const Write = () => {
   }
 
   async function saveDraft(showToast: boolean) {
-    if (!canWrite) return;
+    if (!canWrite) {
+      console.log('[Write] Cannot save - not a writer');
+      return;
+    }
     const data = getDraftData();
-    if (!data.title || !data.body || !data.category) return;
+    if (!data.title || !data.body || !data.category) {
+      console.log('[Write] Cannot save - incomplete data');
+      return;
+    }
     setSaving(true);
     try {
       if (postIdRef.current) {
+        console.log('[Write] Updating draft:', postIdRef.current);
         await updateDraft(postIdRef.current, data);
       } else {
+        console.log('[Write] Creating draft...');
         const id = await createDraft(data);
+        console.log('[Write] Draft created:', id);
         postIdRef.current = id;
       }
       setSaving(false);
       if (showToast) toast.success("Draft saved.");
     } catch (err: unknown) {
+      console.error('[Write] Save error:', err);
       setSaving(false);
       if (showToast) toast.error(apiErrorMessage(err, "Failed to save draft."));
     }
@@ -130,14 +148,19 @@ const Write = () => {
       let id = postIdRef.current;
       if (!id) {
         const data = getDraftData();
+        console.log('[Write] Creating draft...', { title: data.title, category: data.category });
         id = await createDraft(data);
+        console.log('[Write] Draft created:', id);
         postIdRef.current = id;
       }
+      console.log('[Write] Publishing post:', id);
       await publishPost(id);
       toast.success("Your post is live!");
       navigate('/my-posts');
     } catch (err: unknown) {
-      toast.error(apiErrorMessage(err, 'Failed to publish.'));
+      console.error('[Write] Publish error:', err);
+      const msg = apiErrorMessage(err, 'Failed to publish.');
+      toast.error(msg);
     } finally {
       setPublishing(false);
     }
