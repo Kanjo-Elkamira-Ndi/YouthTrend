@@ -8,9 +8,9 @@ import { Label } from "@/components/ui/label";
 import { ArrowLeft, Upload } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { CATEGORIES } from "@/lib/constants";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { api, unwrap } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import type { Post } from "@/types/post";
@@ -19,6 +19,20 @@ import type { AxiosError } from "axios";
 function apiErrorMessage(err: unknown, fallback: string): string {
   const axiosErr = err as AxiosError<{ error?: { message?: string } }>;
   return axiosErr.response?.data?.error?.message ?? fallback;
+}
+
+async function createDraft(data: Record<string, unknown>): Promise<string> {
+  const res = await api.post('/posts', data);
+  const post = unwrap<{ id: string }>(res);
+  return post.id;
+}
+
+async function updateDraft(postId: string, data: Record<string, unknown>): Promise<void> {
+  await api.patch('/posts/' + postId, data);
+}
+
+async function publishPost(postId: string): Promise<void> {
+  await api.post('/posts/' + postId + '/publish');
 }
 
 const Write = () => {
@@ -34,12 +48,10 @@ const Write = () => {
   const [tagInput, setTagInput] = useState("");
   const [visibility, setVisibility] = useState<"public" | "campus_only">("campus_only");
   const [isAnonymous, setIsAnonymous] = useState(false);
-  const [currentPostId, setCurrentPostId] = useState<string | null>(postId ?? null);
-  const currentPostIdRef = useRef(currentPostId);
-  useEffect(() => { currentPostIdRef.current = currentPostId; }, [currentPostId]);
-  const [autoSaveState, setAutoSaveState] = useState<"idle" | "saving" | "saved" | "failed">("idle");
+  const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const postIdRef = useRef<string | null>(postId ?? null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout>>();
-  const [publishOpen, setPublishOpen] = useState(false);
   const canWrite = user?.role === 'writer' || user?.role === 'campus_admin' || user?.role === 'super_admin';
 
   const { data: editPost, isLoading: editLoading } = useQuery({
@@ -57,103 +69,52 @@ const Write = () => {
       setTags(editPost.tags);
       setVisibility(editPost.visibility);
       setIsAnonymous(editPost.is_anonymous);
-      setCurrentPostId(editPost.id);
+      postIdRef.current = editPost.id;
     }
   }, [editPost]);
 
-  const createMutation = useMutation({
-    mutationFn: (draftData: Record<string, unknown>) =>
-      api.post('/posts', draftData).then(unwrap<{ id: string }>),
-    onSuccess: (data) => {
-      setCurrentPostId(data.id);
-      setAutoSaveState("saved");
-    },
-    onError: (err: unknown) => {
-      setAutoSaveState("failed");
-      toast.error(apiErrorMessage(err, "Failed to save draft."));
-    },
-  });
+  function getDraftData() {
+    return {
+      title,
+      subtitle: subtitle || undefined,
+      body,
+      category,
+      tags: tags.length ? tags : undefined,
+      visibility,
+      isAnonymous,
+    };
+  }
 
-  const updateMutation = useMutation({
-    mutationFn: (draftData: Record<string, unknown>) =>
-      api.patch('/posts/' + currentPostIdRef.current, draftData).then(unwrap),
-    onSuccess: () => setAutoSaveState("saved"),
-    onError: (err: unknown) => {
-      setAutoSaveState("failed");
-      toast.error(apiErrorMessage(err, "Failed to save draft."));
-    },
-  });
-
-  const publishMutation = useMutation({
-    mutationFn: (postIdToPublish: string) => api.post('/posts/' + postIdToPublish + '/publish').then(unwrap),
-    onSuccess: () => {
-      toast.success("Your post is live!");
-      navigate('/my-posts');
-    },
-    onError: (err: unknown) => {
-      toast.error(apiErrorMessage(err, 'Failed to publish.'));
-    },
-  });
-
-  const getDraftData = useCallback(() => ({
-    title,
-    subtitle: subtitle || undefined,
-    body,
-    category,
-    tags: tags.length ? tags : undefined,
-    visibility,
-    isAnonymous,
-  }), [title, subtitle, body, category, tags, visibility, isAnonymous]);
-
-  const autoSave = useCallback(() => {
-    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+  async function saveDraft(showToast: boolean) {
     if (!canWrite) return;
-
-    autoSaveTimer.current = setTimeout(async () => {
-      setAutoSaveState("saving");
-      const draftData = getDraftData();
-
-      if (!draftData.title || !draftData.body || !draftData.category) {
-        setAutoSaveState("idle");
-        return;
+    const data = getDraftData();
+    if (!data.title || !data.body || !data.category) return;
+    setSaving(true);
+    try {
+      if (postIdRef.current) {
+        await updateDraft(postIdRef.current, data);
+      } else {
+        const id = await createDraft(data);
+        postIdRef.current = id;
       }
-
-      try {
-        if (currentPostIdRef.current) {
-          await updateMutation.mutateAsync(draftData);
-        } else {
-          await createMutation.mutateAsync(draftData);
-        }
-      } catch {
-        setAutoSaveState("failed");
-      }
-    }, 1500);
-  }, [getDraftData, updateMutation, createMutation, canWrite]);
+      setSaving(false);
+      if (showToast) toast.success("Draft saved.");
+    } catch (err: unknown) {
+      setSaving(false);
+      if (showToast) toast.error(apiErrorMessage(err, "Failed to save draft."));
+    }
+  }
 
   useEffect(() => {
-    autoSave();
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    if (!canWrite) return;
+    autoSaveTimer.current = setTimeout(() => {
+      saveDraft(false).catch(() => {});
+    }, 2000);
     return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
-  }, [autoSave]);
+  }, [title, subtitle, body, category, tags, visibility, isAnonymous, canWrite]);
 
-  const handleSaveDraft = async () => {
-    if (!canWrite) {
-      toast.error("You need writer access before you can publish posts.");
-      return;
-    }
-    const draftData = getDraftData();
-    setAutoSaveState("saving");
-    try {
-      if (currentPostIdRef.current) {
-        await updateMutation.mutateAsync(draftData);
-      } else {
-        await createMutation.mutateAsync(draftData);
-      }
-      toast.success("Draft saved.");
-    } catch (err: unknown) {
-      toast.error(apiErrorMessage(err, "Failed to save draft."));
-      setAutoSaveState("failed");
-    }
-  };
+  const handleSaveDraft = () => saveDraft(true);
 
   const handlePublish = async () => {
     if (!canWrite) {
@@ -164,22 +125,21 @@ const Write = () => {
       toast.error("Add a title, category, and body before publishing.");
       return;
     }
-    const id = currentPostIdRef.current;
-    if (!id) {
-      const draftData = getDraftData();
-      try {
-        const created = await createMutation.mutateAsync(draftData);
-        setCurrentPostId(created.id);
-        await publishMutation.mutateAsync(created.id);
-      } catch (err: unknown) {
-        toast.error(apiErrorMessage(err, "Failed to publish."));
+    setPublishing(true);
+    try {
+      let id = postIdRef.current;
+      if (!id) {
+        const data = getDraftData();
+        id = await createDraft(data);
+        postIdRef.current = id;
       }
-    } else {
-      try {
-        await publishMutation.mutateAsync(id);
-      } catch (err: unknown) {
-        toast.error(apiErrorMessage(err, "Failed to publish."));
-      }
+      await publishPost(id);
+      toast.success("Your post is live!");
+      navigate('/my-posts');
+    } catch (err: unknown) {
+      toast.error(apiErrorMessage(err, 'Failed to publish.'));
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -202,16 +162,16 @@ const Write = () => {
           </Link>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">
-              {autoSaveState === "saving" ? "Saving..." : autoSaveState === "saved" ? "Saved" : autoSaveState === "failed" ? "Save failed" : ""}
+              {saving ? "Saving..." : postIdRef.current ? "Saved" : ""}
             </span>
             <Button variant="ghost" size="sm" onClick={handleSaveDraft} disabled={!canWrite}>Save Draft</Button>
             <Button
               size="sm"
               onClick={handlePublish}
-              disabled={!canWrite || publishMutation.isPending}
+              disabled={!canWrite || publishing}
               className="relative overflow-hidden bg-primary hover:bg-primary/90 group"
             >
-              <span className="relative z-10">Publish →</span>
+              <span className="relative z-10">{publishing ? 'Publishing...' : 'Publish \u2192'}</span>
               <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/30 to-transparent" />
             </Button>
           </div>
