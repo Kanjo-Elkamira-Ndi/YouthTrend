@@ -14,6 +14,12 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { api, unwrap } from "@/lib/api";
 import { useAuth } from "@/context/AuthContext";
 import type { Post } from "@/types/post";
+import type { AxiosError } from "axios";
+
+function apiErrorMessage(err: unknown, fallback: string): string {
+  const axiosErr = err as AxiosError<{ error?: { message?: string } }>;
+  return axiosErr.response?.data?.error?.message ?? fallback;
+}
 
 const Write = () => {
   const { postId } = useParams<{ postId: string }>();
@@ -32,6 +38,7 @@ const Write = () => {
   const [autoSaveState, setAutoSaveState] = useState<"idle" | "saving" | "saved" | "failed">("idle");
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout>>();
   const [publishOpen, setPublishOpen] = useState(false);
+  const canWrite = user?.role === 'writer' || user?.role === 'campus_admin' || user?.role === 'super_admin';
 
   const { data: editPost, isLoading: editLoading } = useQuery({
     queryKey: ['post-edit', postId],
@@ -59,25 +66,30 @@ const Write = () => {
       setCurrentPostId(data.id);
       setAutoSaveState("saved");
     },
-    onError: () => setAutoSaveState("failed"),
+    onError: (err: unknown) => {
+      setAutoSaveState("failed");
+      toast.error(apiErrorMessage(err, "Failed to save draft."));
+    },
   });
 
   const updateMutation = useMutation({
     mutationFn: (draftData: Record<string, unknown>) =>
       api.patch('/posts/' + currentPostId, draftData).then(unwrap),
     onSuccess: () => setAutoSaveState("saved"),
-    onError: () => setAutoSaveState("failed"),
+    onError: (err: unknown) => {
+      setAutoSaveState("failed");
+      toast.error(apiErrorMessage(err, "Failed to save draft."));
+    },
   });
 
   const publishMutation = useMutation({
-    mutationFn: () => api.post('/posts/' + currentPostId + '/publish').then(unwrap),
+    mutationFn: (postIdToPublish: string) => api.post('/posts/' + postIdToPublish + '/publish').then(unwrap),
     onSuccess: () => {
       toast.success("Your post is live!");
       navigate('/my-posts');
     },
     onError: (err: unknown) => {
-      const msg = err instanceof Error ? err.message : 'Failed to publish.';
-      toast.error(msg);
+      toast.error(apiErrorMessage(err, 'Failed to publish.'));
     },
   });
 
@@ -93,12 +105,13 @@ const Write = () => {
 
   const autoSave = useCallback(() => {
     if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    if (!canWrite) return;
 
     autoSaveTimer.current = setTimeout(async () => {
       setAutoSaveState("saving");
       const draftData = getDraftData();
 
-      if (!draftData.title || !draftData.body) {
+      if (!draftData.title || !draftData.body || !draftData.category) {
         setAutoSaveState("idle");
         return;
       }
@@ -113,7 +126,7 @@ const Write = () => {
         setAutoSaveState("failed");
       }
     }, 1500);
-  }, [getDraftData, currentPostId, updateMutation, createMutation]);
+  }, [getDraftData, currentPostId, updateMutation, createMutation, canWrite]);
 
   useEffect(() => {
     autoSave();
@@ -121,6 +134,10 @@ const Write = () => {
   }, [title, subtitle, body, category, tags, visibility, isAnonymous]);
 
   const handleSaveDraft = async () => {
+    if (!canWrite) {
+      toast.error("You need writer access before you can publish posts.");
+      return;
+    }
     const draftData = getDraftData();
     setAutoSaveState("saving");
     try {
@@ -130,24 +147,32 @@ const Write = () => {
         await createMutation.mutateAsync(draftData);
       }
       toast.success("Draft saved.");
-    } catch {
-      toast.error("Failed to save draft.");
+    } catch (err: unknown) {
+      toast.error(apiErrorMessage(err, "Failed to save draft."));
       setAutoSaveState("failed");
     }
   };
 
   const handlePublish = async () => {
+    if (!canWrite) {
+      toast.error("You need writer access before you can publish posts.");
+      return;
+    }
+    if (!title || !body || !category) {
+      toast.error("Add a title, category, and body before publishing.");
+      return;
+    }
     if (!currentPostId) {
       const draftData = getDraftData();
       try {
         const created = await createMutation.mutateAsync(draftData);
         setCurrentPostId(created.id);
-        await publishMutation.mutateAsync();
-      } catch {
-        toast.error("Failed to publish.");
+        await publishMutation.mutateAsync(created.id);
+      } catch (err: unknown) {
+        toast.error(apiErrorMessage(err, "Failed to publish."));
       }
     } else {
-      publishMutation.mutate();
+      publishMutation.mutate(currentPostId);
     }
   };
 
@@ -172,10 +197,11 @@ const Write = () => {
             <span className="text-xs text-muted-foreground">
               {autoSaveState === "saving" ? "Saving..." : autoSaveState === "saved" ? "Saved" : autoSaveState === "failed" ? "Save failed" : ""}
             </span>
-            <Button variant="ghost" size="sm" onClick={handleSaveDraft}>Save Draft</Button>
+            <Button variant="ghost" size="sm" onClick={handleSaveDraft} disabled={!canWrite}>Save Draft</Button>
             <Button
               size="sm"
               onClick={handlePublish}
+              disabled={!canWrite || publishMutation.isPending}
               className="relative overflow-hidden bg-primary hover:bg-primary/90 group"
             >
               <span className="relative z-10">Publish →</span>
@@ -187,6 +213,17 @@ const Write = () => {
 
       <div className="container grid lg:grid-cols-[1fr_320px] gap-8 py-8">
         <div className="max-w-2xl mx-auto w-full space-y-6">
+          {!canWrite && (
+            <div className="rounded-lg border border-amber-500/30 bg-amber-500/10 p-4 text-sm">
+              <div className="font-semibold text-amber-700 dark:text-amber-300">Writer access required</div>
+              <p className="mt-1 text-muted-foreground">
+                Your current role is {user?.role?.replace('_', ' ') ?? 'not loaded'}. Request writer access before creating posts.
+              </p>
+              <Link to="/writer/upgrade" className="mt-3 inline-flex text-primary font-semibold hover:underline">
+                Request writer access
+              </Link>
+            </div>
+          )}
           <input
             className="w-full bg-transparent text-4xl md:text-5xl font-extrabold tracking-tight outline-none placeholder:text-muted-foreground/50"
             placeholder="Your headline here..."

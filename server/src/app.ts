@@ -2,6 +2,7 @@ import express, { Application } from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
+import * as path from 'path';
 import { toNodeHandler } from 'better-auth/node';
 
 import { corsOptions } from './config/cors';
@@ -26,11 +27,14 @@ import announcementsRoutes from './modules/announcements/announcements.routes';
 import searchRoutes from './modules/search/search.routes';
 import analyticsRoutes from './modules/analytics/analytics.routes';
 import superAdminRoutes from './modules/super-admin/super-admin.routes';
+import campusJoinRoutes from './modules/campus-join/campus-join.routes';
 export function createApp(): Application {
   const app = express();
 
   // ── Security ────────────────────────────────────────────────────────────────
-  app.use(helmet());
+  app.use(helmet({
+    crossOriginResourcePolicy: { policy: 'cross-origin' },
+  }));
   app.use(cors(corsOptions));
 
   // ── Body / cookies ──────────────────────────────────────────────────────────
@@ -55,6 +59,9 @@ export function createApp(): Application {
   // ── Global rate limiter for all other API routes ────────────────────────────
   app.use('/api', defaultLimiter);
 
+  // ── Static files (uploaded avatars) ─────────────────────────────────────────
+  app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
+
   // ── Application routes ───────────────────────────────────────────────────────
   app.use('/health', healthRoutes);
   app.use('/api/v1/health', healthRoutes);
@@ -70,6 +77,7 @@ export function createApp(): Application {
   app.use('/api/v1/search',          searchRoutes);
   app.use('/api/v1/analytics',       analyticsRoutes);
   app.use('/api/v1/super-admin',     superAdminRoutes);
+  app.use('/api/v1/campus-join',     campusJoinRoutes);
   // ── 404 + error handlers ────────────────────────────────────────────────────
   app.use(notFoundHandler);
   app.use(errorHandler);

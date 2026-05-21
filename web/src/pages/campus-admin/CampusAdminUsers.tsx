@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Search, Plus, MoreHorizontal, UserCheck, ShieldCheck, UserX, Trash2, ChevronLeft, ChevronRight } from "lucide-react";
+import { Search, Plus, MoreHorizontal, UserCheck, ShieldCheck, UserX, Trash2, ChevronLeft, ChevronRight, DoorOpen, Check, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
@@ -11,6 +12,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, unwrapPaginated, unwrap } from "@/lib/api";
 import { toast } from "sonner";
 import type { UserListItem } from "@/types/user";
+import type { CampusJoinFull } from "@/types/campus-join";
 import { TableSkeleton } from "@/components/common/Skeletons";
 
 const roleClass: Record<string, string> = {
@@ -56,8 +58,41 @@ const CampusAdminUsers = () => {
     onError: () => toast.error('Failed to send invitations.'),
   });
 
+  // ── Campus join requests ──
+  const { data: joinData, isLoading: joinLoading, refetch: refetchJoins } = useQuery({
+    queryKey: ['campus-join-requests'],
+    queryFn: () => api.get('/campus-join/campus', { params: { status: 'pending' } }).then(unwrapPaginated<CampusJoinFull>),
+  });
+
+  const approveJoin = useMutation({
+    mutationFn: (requestId: string) =>
+      api.patch(`/campus-join/campus/${requestId}/approve`).then(unwrap),
+    onSuccess: () => {
+      refetchJoins();
+      queryClient.invalidateQueries({ queryKey: ['campus-users'] });
+      toast.success('Join request approved.');
+    },
+    onError: () => toast.error('Failed to approve request.'),
+  });
+
+  const [declineId, setDeclineId] = useState<string | null>(null);
+  const [declineNote, setDeclineNote] = useState("");
+
+  const declineJoin = useMutation({
+    mutationFn: ({ requestId, reviewerNote }: { requestId: string; reviewerNote?: string }) =>
+      api.patch(`/campus-join/campus/${requestId}/decline`, { reviewerNote }).then(unwrap),
+    onSuccess: () => {
+      refetchJoins();
+      setDeclineId(null);
+      setDeclineNote("");
+      toast.success('Join request declined.');
+    },
+    onError: () => toast.error('Failed to decline request.'),
+  });
+
   const users = data?.data ?? [];
   const meta = data?.meta;
+  const joinRequests = joinData?.data ?? [];
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="p-4 lg:p-8 max-w-[1400px] mx-auto w-full space-y-6">
@@ -85,6 +120,79 @@ const CampusAdminUsers = () => {
           <InviteUserDialog onInvite={(emails, role) => inviteMutation.mutate({ emails, role })} />
         </div>
       </div>
+
+      {/* ── Pending Join Requests ── */}
+      {joinRequests.length > 0 && (
+        <div className="yt-card overflow-hidden">
+          <div className="flex items-center gap-2 px-5 py-3 border-b border-border bg-secondary/20">
+            <DoorOpen className="h-4 w-4 text-primary" />
+            <span className="font-bold text-sm">Pending Join Requests</span>
+            <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-primary/10 text-primary border border-primary/20">{joinRequests.length}</span>
+          </div>
+          <div className="divide-y divide-border">
+            {joinRequests.map((req) => (
+              <div key={req.id} className="flex items-center justify-between px-5 py-3">
+                <div className="flex items-center gap-3 min-w-0">
+                  <img
+                    src={req.requester_avatar_url ?? ''}
+                    alt=""
+                    className="h-9 w-9 rounded-full object-cover ring-1 ring-border"
+                  />
+                  <div className="min-w-0">
+                    <div className="font-semibold truncate">{req.requester_full_name}</div>
+                    <div className="text-xs text-muted-foreground truncate">{req.requester_email}</div>
+                    <div className="text-[11px] text-muted-foreground">
+                      Requested {new Date(req.created_at).toLocaleDateString()}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <Button
+                    size="sm"
+                    className="gap-1"
+                    onClick={() => approveJoin.mutate(req.id)}
+                    disabled={approveJoin.isPending}
+                  >
+                    <Check className="h-3.5 w-3.5" /> Approve
+                  </Button>
+                  <Dialog open={declineId === req.id} onOpenChange={(o) => { if (!o) setDeclineId(null); }}>
+                    <DialogTrigger asChild>
+                      <Button size="sm" variant="outline" className="gap-1 text-red-500 border-red-500/30 hover:bg-red-500/10" onClick={() => setDeclineId(req.id)}>
+                        <X className="h-3.5 w-3.5" /> Decline
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-sm">
+                      <DialogHeader><DialogTitle>Decline join request</DialogTitle></DialogHeader>
+                      <div className="space-y-3">
+                        <p className="text-sm text-muted-foreground">
+                          Decline <strong>{req.requester_full_name}</strong>'s request to join {req.campus_name}?
+                        </p>
+                        <div className="space-y-1.5">
+                          <Label className="text-xs font-semibold">Reason (optional)</Label>
+                          <Textarea
+                            value={declineNote}
+                            onChange={(e) => setDeclineNote(e.target.value)}
+                            placeholder="Let the user know why..."
+                            rows={3}
+                          />
+                        </div>
+                        <Button
+                          variant="destructive"
+                          className="w-full"
+                          onClick={() => declineJoin.mutate({ requestId: req.id, reviewerNote: declineNote || undefined })}
+                          disabled={declineJoin.isPending}
+                        >
+                          Decline Request
+                        </Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {isLoading ? <TableSkeleton /> : isError ? (
         <div className="text-center py-12 text-muted-foreground">Failed to load users.</div>

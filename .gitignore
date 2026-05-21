@@ -25,3 +25,6 @@ dist-ssr
 *.sw?
 .agents
 .codex
+
+# Uploaded user files
+server/uploads/

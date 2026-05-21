@@ -15,6 +15,9 @@
 
 import { Router }          from 'express';
 import { z }               from 'zod';
+import multer              from 'multer';
+import * as path           from 'path';
+import * as fs             from 'fs';
 import { fromNodeHeaders } from 'better-auth/node';
 import { auth }            from '../../config/auth';
 import { query }           from '../../config/db';
@@ -29,6 +32,7 @@ import {
 import {
   UnauthorizedError,
   NotFoundError,
+  BadRequestError,
 } from '../../shared/errors/AppError';
 
 const router = Router();
@@ -61,6 +65,31 @@ const updateProfileSchema = z.object({
     .optional(),
   avatarUrl:   z.string().url('Must be a valid URL').optional(),
   matricule:   z.string().max(50).optional(),
+  username:    z.string().min(3, 'Username must be at least 3 characters').max(30).regex(/^[a-z0-9._]+$/, 'Username can only contain lowercase letters, numbers, periods, and underscores').optional(),
+  email:       z.string().email('Must be a valid email address').optional(),
+});
+
+const avatarDir = path.join(__dirname, '..', '..', '..', 'uploads', 'avatars');
+fs.mkdirSync(avatarDir, { recursive: true });
+
+const avatarStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => cb(null, avatarDir),
+  filename:    (_req, file, cb) => {
+    const ext = path.extname(file.originalname) || '.jpg';
+    cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+  },
+});
+
+const upload = multer({
+  storage: avatarStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) => {
+    if (!file.mimetype.startsWith('image/')) {
+      cb(new Error('Only image files are allowed.'));
+      return;
+    }
+    cb(null, true);
+  },
 });
 
 // ── GET /api/v1/auth/session ──────────────────────────────────────────────────
@@ -143,6 +172,22 @@ router.patch(
       req.user!.id,
       req.body,
     );
+    return sendSuccess(res, updated);
+  }),
+);
+
+// ── POST /api/v1/auth/avatar ──────────────────────────────────────────────────
+// Upload or replace profile picture. Returns the new avatar URL.
+
+router.post(
+  '/avatar',
+  requireAuth,
+  upload.single('avatar'),
+  asyncHandler(async (req, res) => {
+    if (!req.file) throw new BadRequestError('No file provided.');
+
+    const avatarUrl = `/uploads/avatars/${req.file.filename}`;
+    const updated = await AuthService.updateProfile(req.user!.id, { avatarUrl });
     return sendSuccess(res, updated);
   }),
 );

@@ -11,6 +11,7 @@ import { useAuth } from "@/context/AuthContext";
 import type { PublicProfile } from "@/types/user";
 import type { Post } from "@/types/post";
 import { FeedSkeleton } from "@/components/common/Skeletons";
+import { initials, resolveMediaUrl } from "@/lib/media";
 
 const Profile = () => {
   const { username } = useParams<{ username: string }>();
@@ -96,7 +97,13 @@ const Profile = () => {
           <div className="absolute inset-0 opacity-20" style={{ backgroundImage: "radial-gradient(circle at 20% 30%, white 1px, transparent 1px)", backgroundSize: "32px 32px" }} />
         </div>
         <div className="px-4 -mt-14 relative">
-          <img src={profile.avatar_url ?? ''} className="h-28 w-28 rounded-full ring-4 ring-background object-cover" alt={profile.full_name} />
+          <div className="h-28 w-28 rounded-full ring-4 ring-background bg-secondary overflow-hidden flex items-center justify-center">
+            {resolveMediaUrl(profile.avatar_url) ? (
+              <img src={resolveMediaUrl(profile.avatar_url)} className="h-full w-full object-cover" alt={profile.full_name} />
+            ) : (
+              <span className="text-3xl font-extrabold">{initials(profile.full_name)}</span>
+            )}
+          </div>
           <div className="mt-4 flex flex-col md:flex-row md:items-end md:justify-between gap-4">
             <div>
               <h1 className="text-2xl md:text-3xl font-extrabold">{profile.full_name}</h1>
@@ -140,7 +147,7 @@ const Profile = () => {
                 <div className="space-y-3">
                   {followers.map((f) => (
                     <div key={f.id} className="flex items-center gap-3 yt-card p-3">
-                      <img src={f.avatar_url ?? ''} alt={f.full_name} className="h-10 w-10 rounded-full object-cover" />
+                      <AvatarImage name={f.full_name} src={f.avatar_url} />
                       <div>
                         <div className="font-semibold text-sm">{f.full_name}</div>
                         <div className="text-xs text-muted-foreground">@{f.username}</div>
@@ -155,7 +162,7 @@ const Profile = () => {
                 <div className="space-y-3">
                   {following.map((f) => (
                     <div key={f.id} className="flex items-center gap-3 yt-card p-3">
-                      <img src={f.avatar_url ?? ''} alt={f.full_name} className="h-10 w-10 rounded-full object-cover" />
+                      <AvatarImage name={f.full_name} src={f.avatar_url} />
                       <div>
                         <div className="font-semibold text-sm">{f.full_name}</div>
                         <div className="text-xs text-muted-foreground">@{f.username}</div>
@@ -177,6 +184,16 @@ const Stat = ({ label, value }: { label: string; value: number }) => (
   <div className="yt-card p-3 text-center">
     <div className="text-lg font-extrabold">{value.toLocaleString()}</div>
     <div className="text-[11px] text-muted-foreground uppercase tracking-wide">{label}</div>
+  </div>
+);
+
+const AvatarImage = ({ name, src }: { name: string; src: string | null }) => (
+  <div className="h-10 w-10 rounded-full bg-secondary overflow-hidden flex items-center justify-center shrink-0">
+    {resolveMediaUrl(src) ? (
+      <img src={resolveMediaUrl(src)} alt={name} className="h-full w-full object-cover" />
+    ) : (
+      <span className="text-xs font-bold">{initials(name)}</span>
+    )}
   </div>
 );
 

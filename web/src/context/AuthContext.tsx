@@ -73,7 +73,17 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           const meRes = await api.get("/auth/me");
           setUser(unwrap<AppUser>(meRes));
         } else {
-          setUser(null);
+          // Auto-provision for OAuth signups (Google, etc.)
+          await api.post("/auth/provision", {});
+          const sessionRes = await api.get("/auth/session");
+          const sessionData = unwrap<SessionPayload>(sessionRes);
+          setProvisioned(true);
+          if (sessionData.provisioned) {
+            const meRes = await api.get("/auth/me");
+            setUser(unwrap<AppUser>(meRes));
+          } else {
+            setUser(null);
+          }
         }
       } else {
         setUser(null);

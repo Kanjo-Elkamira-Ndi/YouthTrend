@@ -6,6 +6,7 @@ import { Link, NavLink } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
 import { useQuery } from "@tanstack/react-query";
 import { api, unwrap } from "@/lib/api";
+import { initials, resolveMediaUrl } from "@/lib/media";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
@@ -44,11 +45,28 @@ export const AppNavbar = () => {
             <div className="hidden sm:flex items-center gap-2"><LanguageToggle /><ThemeToggle /></div>
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="h-9 w-9 rounded-full overflow-hidden ring-1 ring-border">
-                  <img src={user?.avatar_url ?? ''} alt={user?.full_name ?? ''} />
+                <button className="h-9 w-9 rounded-full overflow-hidden ring-1 ring-border bg-secondary inline-flex items-center justify-center">
+                  {resolveMediaUrl(user?.avatar_url) ? (
+                    <img src={resolveMediaUrl(user?.avatar_url)} alt={user?.full_name ?? ''} className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-xs font-bold">{initials(user?.full_name)}</span>
+                  )}
                 </button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
+              <DropdownMenuContent align="end" className="w-64">
+                {user && (
+                  <>
+                    <div className="px-2 py-2">
+                      <div className="font-semibold leading-tight">{user.full_name}</div>
+                      <div className="text-xs text-muted-foreground truncate">{user.email}</div>
+                      <div className="mt-1 text-xs text-muted-foreground">
+                        {user.role.replace('_', ' ')}
+                        {user.campus_short_code ? ` · ${user.campus_short_code}` : ''}
+                      </div>
+                    </div>
+                    <DropdownMenuSeparator />
+                  </>
+                )}
                 <DropdownMenuItem asChild><Link to={`/profile/${user?.username}`}>Profile</Link></DropdownMenuItem>
                 <DropdownMenuItem asChild><Link to="/settings">Settings</Link></DropdownMenuItem>
                 <DropdownMenuSeparator />
