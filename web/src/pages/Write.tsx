@@ -5,13 +5,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Upload } from "lucide-react";
+import { ArrowLeft, Upload, X, Loader2 } from "lucide-react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { CATEGORIES } from "@/lib/constants";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef } from "react";
 import { toast } from "sonner";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { api, unwrap } from "@/lib/api";
+import { resolveMediaUrl } from "@/lib/media";
 import { useAuth } from "@/context/AuthContext";
 import type { Post } from "@/types/post";
 import type { AxiosError } from "axios";
@@ -19,6 +20,20 @@ import type { AxiosError } from "axios";
 function apiErrorMessage(err: unknown, fallback: string): string {
   const axiosErr = err as AxiosError<{ error?: { message?: string } }>;
   return axiosErr.response?.data?.error?.message ?? fallback;
+}
+
+async function createDraft(data: Record<string, unknown>): Promise<string> {
+  const res = await api.post('/posts', data);
+  const post = unwrap<{ id: string }>(res);
+  return post.id;
+}
+
+async function updateDraft(postId: string, data: Record<string, unknown>): Promise<void> {
+  await api.patch('/posts/' + postId, data);
+}
+
+async function publishPost(postId: string): Promise<void> {
+  await api.post('/posts/' + postId + '/publish');
 }
 
 const Write = () => {
@@ -34,11 +49,23 @@ const Write = () => {
   const [tagInput, setTagInput] = useState("");
   const [visibility, setVisibility] = useState<"public" | "campus_only">("campus_only");
   const [isAnonymous, setIsAnonymous] = useState(false);
-  const [currentPostId, setCurrentPostId] = useState<string | null>(postId ?? null);
-  const [autoSaveState, setAutoSaveState] = useState<"idle" | "saving" | "saved" | "failed">("idle");
+  const [saving, setSaving] = useState(false);
+  const [publishing, setPublishing] = useState(false);
+  const [coverUrl, setCoverUrl] = useState("");
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const postIdRef = useRef<string | null>(null);
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout>>();
-  const [publishOpen, setPublishOpen] = useState(false);
+  const coverInputRef = useRef<HTMLInputElement>(null);
   const canWrite = user?.role === 'writer' || user?.role === 'campus_admin' || user?.role === 'super_admin';
+
+  // Reset when navigating to a different post or to new post
+  useEffect(() => {
+    postIdRef.current = postId ?? null;
+    setTitle(""); setSubtitle(""); setBody(""); setCategory("");
+    setTags([]); setVisibility("campus_only"); setIsAnonymous(false);
+    setCoverUrl(""); setDragOver(false);
+  }, [postId]);
 
   const { data: editPost, isLoading: editLoading } = useQuery({
     queryKey: ['post-edit', postId],
@@ -55,103 +82,82 @@ const Write = () => {
       setTags(editPost.tags);
       setVisibility(editPost.visibility);
       setIsAnonymous(editPost.is_anonymous);
-      setCurrentPostId(editPost.id);
+      setCoverUrl(editPost.cover_url ?? "");
+      postIdRef.current = editPost.id;
     }
   }, [editPost]);
 
-  const createMutation = useMutation({
-    mutationFn: (draftData: Record<string, unknown>) =>
-      api.post('/posts', draftData).then(unwrap<{ id: string }>),
-    onSuccess: (data) => {
-      setCurrentPostId(data.id);
-      setAutoSaveState("saved");
-    },
-    onError: (err: unknown) => {
-      setAutoSaveState("failed");
-      toast.error(apiErrorMessage(err, "Failed to save draft."));
-    },
-  });
+  function getDraftData() {
+    return {
+      title,
+      subtitle: subtitle || undefined,
+      body,
+      category,
+      tags: tags.length ? tags : undefined,
+      visibility,
+      isAnonymous,
+      coverUrl: coverUrl || undefined,
+    };
+  }
 
-  const updateMutation = useMutation({
-    mutationFn: (draftData: Record<string, unknown>) =>
-      api.patch('/posts/' + currentPostId, draftData).then(unwrap),
-    onSuccess: () => setAutoSaveState("saved"),
-    onError: (err: unknown) => {
-      setAutoSaveState("failed");
-      toast.error(apiErrorMessage(err, "Failed to save draft."));
-    },
-  });
+  async function uploadCoverFile(file: File) {
+    setUploadingCover(true);
+    try {
+      const form = new FormData();
+      form.append('cover', file);
+      const res = await api.post('/posts/cover', form, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const { url } = unwrap<{ url: string }>(res);
+      setCoverUrl(url);
+      toast.success('Cover image uploaded.');
+    } catch (err: unknown) {
+      toast.error(apiErrorMessage(err, 'Failed to upload cover image.'));
+    } finally {
+      setUploadingCover(false);
+    }
+  }
 
-  const publishMutation = useMutation({
-    mutationFn: (postIdToPublish: string) => api.post('/posts/' + postIdToPublish + '/publish').then(unwrap),
-    onSuccess: () => {
-      toast.success("Your post is live!");
-      navigate('/my-posts');
-    },
-    onError: (err: unknown) => {
-      toast.error(apiErrorMessage(err, 'Failed to publish.'));
-    },
-  });
-
-  const getDraftData = useCallback(() => ({
-    title,
-    subtitle: subtitle || undefined,
-    body,
-    category,
-    tags: tags.length ? tags : undefined,
-    visibility,
-    isAnonymous,
-  }), [title, subtitle, body, category, tags, visibility, isAnonymous]);
-
-  const autoSave = useCallback(() => {
-    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    if (!canWrite) return;
-
-    autoSaveTimer.current = setTimeout(async () => {
-      setAutoSaveState("saving");
-      const draftData = getDraftData();
-
-      if (!draftData.title || !draftData.body || !draftData.category) {
-        setAutoSaveState("idle");
-        return;
-      }
-
-      try {
-        if (currentPostId) {
-          await updateMutation.mutateAsync(draftData);
-        } else {
-          await createMutation.mutateAsync(draftData);
-        }
-      } catch {
-        setAutoSaveState("failed");
-      }
-    }, 1500);
-  }, [getDraftData, currentPostId, updateMutation, createMutation, canWrite]);
-
-  useEffect(() => {
-    autoSave();
-    return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
-  }, [title, subtitle, body, category, tags, visibility, isAnonymous]);
-
-  const handleSaveDraft = async () => {
+  async function saveDraft(showToast: boolean) {
     if (!canWrite) {
-      toast.error("You need writer access before you can publish posts.");
+      if (showToast) console.log('[Write] Cannot save - not a writer');
       return;
     }
-    const draftData = getDraftData();
-    setAutoSaveState("saving");
-    try {
-      if (currentPostId) {
-        await updateMutation.mutateAsync(draftData);
-      } else {
-        await createMutation.mutateAsync(draftData);
-      }
-      toast.success("Draft saved.");
-    } catch (err: unknown) {
-      toast.error(apiErrorMessage(err, "Failed to save draft."));
-      setAutoSaveState("failed");
+    const data = getDraftData();
+    if (!data.title || data.title.length < 5 || !data.body || !data.category) {
+      if (showToast) toast.error('Title needs at least 5 characters. Add a body and category too.');
+      return;
     }
-  };
+    setSaving(true);
+    try {
+      if (postIdRef.current) {
+        console.log('[Write] Updating draft:', postIdRef.current);
+        await updateDraft(postIdRef.current, data);
+      } else {
+        console.log('[Write] Creating draft...');
+        const id = await createDraft(data);
+        console.log('[Write] Draft created:', id);
+        postIdRef.current = id;
+      }
+      setSaving(false);
+      if (showToast) toast.success("Draft saved.");
+    } catch (err: unknown) {
+      console.error('[Write] Save error:', err);
+      setSaving(false);
+      if (showToast) toast.error(apiErrorMessage(err, "Failed to save draft."));
+    }
+  }
+
+  useEffect(() => {
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    if (!canWrite) return;
+    autoSaveTimer.current = setTimeout(() => {
+      saveDraft(false).catch(() => {});
+    }, 2000);
+    return () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); };
+  }, [title, subtitle, body, category, tags, visibility, isAnonymous, coverUrl, canWrite]);
+
+  const handleSaveDraft = () => saveDraft(true);
 
   const handlePublish = async () => {
     if (!canWrite) {
@@ -162,19 +168,47 @@ const Write = () => {
       toast.error("Add a title, category, and body before publishing.");
       return;
     }
-    if (!currentPostId) {
-      const draftData = getDraftData();
-      try {
-        const created = await createMutation.mutateAsync(draftData);
-        setCurrentPostId(created.id);
-        await publishMutation.mutateAsync(created.id);
-      } catch (err: unknown) {
-        toast.error(apiErrorMessage(err, "Failed to publish."));
+    setPublishing(true);
+    try {
+      let id = postIdRef.current;
+      if (!id) {
+        const data = getDraftData();
+        console.log('[Write] Creating draft...', { title: data.title, category: data.category });
+        id = await createDraft(data);
+        console.log('[Write] Draft created:', id);
+        postIdRef.current = id;
       }
-    } else {
-      publishMutation.mutate(currentPostId);
+      console.log('[Write] Publishing post:', id);
+      await publishPost(id);
+      toast.success("Your post is live!");
+      navigate('/my-posts');
+    } catch (err: unknown) {
+      console.error('[Write] Publish error:', err);
+      const msg = apiErrorMessage(err, 'Failed to publish.');
+      toast.error(msg);
+    } finally {
+      setPublishing(false);
     }
   };
+
+  function handleCoverDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type.startsWith('image/')) uploadCoverFile(file);
+  }
+
+  function handleCoverDragOver(e: React.DragEvent) {
+    e.preventDefault();
+    setDragOver(true);
+  }
+
+  function handleCoverDragLeave() { setDragOver(false); }
+
+  function handleCoverFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (file) uploadCoverFile(file);
+  }
 
   if (postId && editLoading) {
     return (
@@ -195,16 +229,16 @@ const Write = () => {
           </Link>
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">
-              {autoSaveState === "saving" ? "Saving..." : autoSaveState === "saved" ? "Saved" : autoSaveState === "failed" ? "Save failed" : ""}
+              {saving ? "Saving..." : postIdRef.current ? "Saved" : ""}
             </span>
             <Button variant="ghost" size="sm" onClick={handleSaveDraft} disabled={!canWrite}>Save Draft</Button>
             <Button
               size="sm"
               onClick={handlePublish}
-              disabled={!canWrite || publishMutation.isPending}
+              disabled={!canWrite || publishing}
               className="relative overflow-hidden bg-primary hover:bg-primary/90 group"
             >
-              <span className="relative z-10">Publish →</span>
+              <span className="relative z-10">{publishing ? 'Publishing...' : 'Publish \u2192'}</span>
               <span className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-700 bg-gradient-to-r from-transparent via-white/30 to-transparent" />
             </Button>
           </div>
@@ -237,10 +271,42 @@ const Write = () => {
             onChange={(e) => setSubtitle(e.target.value)}
           />
 
-          <div className="border-2 border-dashed border-border rounded-xl p-10 text-center hover:border-primary/60 transition-colors cursor-pointer">
-            <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
-            <p className="text-sm text-muted-foreground">Drag & drop a cover image, or click to upload</p>
-          </div>
+          <input ref={coverInputRef} type="file" accept="image/*" className="hidden" onChange={handleCoverFileChange} />
+
+          {coverUrl ? (
+            <div className="relative rounded-xl overflow-hidden group">
+              <img src={resolveMediaUrl(coverUrl)} alt="Cover" className="w-full h-48 object-cover" />
+              <div className="absolute inset-0 bg-black/50 flex items-center justify-center gap-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button type="button" size="sm" variant="secondary" onClick={() => coverInputRef.current?.click()} disabled={uploadingCover}>
+                  {uploadingCover ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Change'}
+                </Button>
+                <Button type="button" size="sm" variant="destructive" onClick={() => setCoverUrl("")}>
+                  <X className="h-4 w-4 mr-1" /> Remove
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <div
+              onDrop={handleCoverDrop}
+              onDragOver={handleCoverDragOver}
+              onDragLeave={handleCoverDragLeave}
+              onClick={() => coverInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-xl p-10 text-center transition-colors cursor-pointer ${
+                dragOver
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:border-primary/60'
+              }`}
+            >
+              {uploadingCover ? (
+                <Loader2 className="h-6 w-6 mx-auto text-muted-foreground mb-2 animate-spin" />
+              ) : (
+                <Upload className="h-6 w-6 mx-auto text-muted-foreground mb-2" />
+              )}
+              <p className="text-sm text-muted-foreground">
+                {uploadingCover ? 'Uploading...' : 'Drag & drop a cover image, or click to upload'}
+              </p>
+            </div>
+          )}
 
           <Textarea
             rows={20}

@@ -458,7 +458,15 @@ export const PostsService = {
         }
       }
 
-      return PostsService.getById(postId);
+      const { rows: created } = await client.query<PostFull>(`
+        SELECT ${POST_SELECT}
+        FROM   posts p
+        JOIN   users    u ON u.id = p.author_id
+        JOIN   campuses c ON c.id = p.campus_id
+        WHERE  p.id = $1
+        LIMIT  1
+      `, [postId]);
+      return created[0];
     });
   },
 
@@ -563,7 +571,15 @@ export const PostsService = {
         }
       }
 
-      return PostsService.getById(opts.postId);
+      const { rows: updated } = await client.query<PostFull>(`
+        SELECT ${POST_SELECT}
+        FROM   posts p
+        JOIN   users    u ON u.id = p.author_id
+        JOIN   campuses c ON c.id = p.campus_id
+        WHERE  p.id = $1
+        LIMIT  1
+      `, [opts.postId]);
+      return updated[0];
     });
   },
 
