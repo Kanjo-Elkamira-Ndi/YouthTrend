@@ -6,6 +6,7 @@ import { CATEGORIES } from "@/lib/constants";
 import { motion } from "framer-motion";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
+import { resolveMediaUrl } from "@/lib/media";
 import { ReportModal } from "@/components/common/ReportModal";
 import {
   DropdownMenu,
@@ -90,7 +91,7 @@ export const PostCard = ({ post, variant = "compact" }: Props) => {
       >
         <Link to={`/post/${post.campus_slug}/${post.slug}`} className="block">
           <div className="aspect-[16/8] overflow-hidden bg-muted">
-            <img src={post.cover_url ?? ''} alt={post.title} className="h-full w-full object-cover group-hover:scale-[1.03] transition-transform duration-500" />
+            <img src={resolveMediaUrl(post.cover_url) ?? ''} alt={post.title} className="h-full w-full object-cover group-hover:scale-[1.03] transition-transform duration-500" />
           </div>
         </Link>
         <div className="p-5 space-y-3">
@@ -157,7 +158,7 @@ export const PostCard = ({ post, variant = "compact" }: Props) => {
         </div>
         <Link to={`/post/${post.campus_slug}/${post.slug}`} className="shrink-0">
           <div className="w-28 h-28 sm:w-36 sm:h-28 rounded-lg overflow-hidden bg-muted">
-            <img src={post.cover_url ?? ''} alt={post.title} className="h-full w-full object-cover group-hover:scale-[1.04] transition-transform duration-500" />
+            <img src={resolveMediaUrl(post.cover_url) ?? ''} alt={post.title} className="h-full w-full object-cover group-hover:scale-[1.04] transition-transform duration-500" />
           </div>
         </Link>
       </div>

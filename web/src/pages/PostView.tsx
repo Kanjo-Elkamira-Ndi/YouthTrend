@@ -154,7 +154,7 @@ const PostView = () => {
 
         {post.cover_url && (
           <div className="rounded-2xl overflow-hidden bg-muted aspect-[16/8] mb-6">
-            <img src={post.cover_url} alt={post.title} className="h-full w-full object-cover" />
+            <img src={resolveMediaUrl(post.cover_url)} alt={post.title} className="h-full w-full object-cover" />
           </div>
         )}
 
