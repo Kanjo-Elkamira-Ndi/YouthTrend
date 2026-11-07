@@ -329,6 +329,8 @@ fix/*       → bug fix branches
 
 ---
 
+My name is Beyassih Djoukouo Tamba Celine Freddy from SWE North, this is my contribution.
+
 ## License
 
 This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
