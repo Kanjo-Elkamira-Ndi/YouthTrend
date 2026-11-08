@@ -326,7 +326,7 @@ develop     → integration branch for all features
 feature/*   → individual feature branches
 fix/*       → bug fix branches
 ```
-
+my name is EPIE METUK BRITHNEY NTUKE and here is my contribution
 ---
 
 ## License
