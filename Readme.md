@@ -334,7 +334,7 @@ fix/*       → bug fix branches
 This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
 
 ---
-
+My name is LEKE MOFACK ANDREYNA MOREEN of SWE North, here is my contribution.
 ## Author
 
 <div align="center">
