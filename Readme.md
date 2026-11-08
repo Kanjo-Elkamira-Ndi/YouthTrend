@@ -346,3 +346,6 @@ Built with 💚 by **KANJO ELKAMIRA NDI (ALCHEMY CODES)**
 *Where Campus Gist Lives 🇨🇲*
 
 </div>
+
+## contributors
+my name is berinyuy schubert nchangang from software engineerimg north ,this is my contribution 
