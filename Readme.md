@@ -326,7 +326,7 @@ develop     → integration branch for all features
 feature/*   → individual feature branches
 fix/*       → bug fix branches
 ```
-
+My name is Glen Le Messie from SWE and this my contribution.
 ---
 
 ## License
