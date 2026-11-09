@@ -332,9 +332,8 @@ fix/*       → bug fix branches
 ## License
 
 This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
-
 ---
-
+MY NAME IS FARELLE LORENZA GUEBEDIANG FROM SWE NORTH. THIS IS MY CONTRIBUTION
 ## Author
 
 <div align="center">
