@@ -328,6 +328,7 @@ fix/*       → bug fix branches
 ```
 
 ---
+My name is Guifo Kamdem Darel from Software Engineering North, This is my contriibution.
 
 ## License
 
