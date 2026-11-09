@@ -328,6 +328,7 @@ fix/*       → bug fix branches
 ```
 
 ---
+My name is Kamegni Sandra from SWE North, this is my contribution.
 
 ## License
 
