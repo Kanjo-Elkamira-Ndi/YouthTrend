@@ -341,6 +341,7 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 
 Built with 💚 by **KANJO ELKAMIRA NDI (ALCHEMY CODES)**
 
+By FUH JUNIOR STEVEN, SOFTWARE ENGINEERING NORTH "THIS IS MY CONTRIBUTION 
 [GitHub](https://github.com/Kanjo-Elkamira-Ndi) · [LinkedIn](https://www.linkedin.com/in/kanjo-elkamira-ndi-a767b7229)
 
 *Where Campus Gist Lives 🇨🇲*
