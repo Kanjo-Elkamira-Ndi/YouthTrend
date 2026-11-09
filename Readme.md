@@ -340,7 +340,7 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 <div align="center">
 
 Built with 💚 by **KANJO ELKAMIRA NDI (ALCHEMY CODES)**
-
+my name is leonel akembom,swe north here is my contribution
 [GitHub](https://github.com/Kanjo-Elkamira-Ndi) · [LinkedIn](https://www.linkedin.com/in/kanjo-elkamira-ndi-a767b7229)
 
 *Where Campus Gist Lives 🇨🇲*
