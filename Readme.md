@@ -3,7 +3,7 @@
 # YouthTrend 🌿
 
 **Your Campus. Your Gist. Your Voice.**
-
+My name is Ndah Honore Zoh and here is my contribution
 A bilingual (EN/FR) campus-first content & gist platform for Cameroonian university students —  
 monorepo powering the web app, REST API, and Flutter mobile client.
 
