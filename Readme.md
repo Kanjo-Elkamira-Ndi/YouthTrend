@@ -328,6 +328,7 @@ fix/*       → bug fix branches
 ```
 
 ---
+My name is Akaragwe Emmanuel Angel-Bell from SWE NORTH, this is my contribution.
 
 ## License
 
