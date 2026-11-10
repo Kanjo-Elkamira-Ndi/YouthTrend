@@ -2,10 +2,13 @@
 
 # YouthTrend 🌿
 
-**Your Campus. Your Gist. Your Voice.**
+**Academic information.**
 
-A bilingual (EN/FR) campus-first content & gist platform for Cameroonian university students —  
-monorepo powering the web app, REST API, and Flutter mobile client.
+**school:** ISSEST
+**course:** Software Engeneering
+**Department:** SWE NORTH
+**Campus:** B
+**Name:** BONA HANSON JUNIOR
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-In%20Development-blue)]()
@@ -344,5 +347,3 @@ Built with 💚 by **KANJO ELKAMIRA NDI (ALCHEMY CODES)**
 [GitHub](https://github.com/Kanjo-Elkamira-Ndi) · [LinkedIn](https://www.linkedin.com/in/kanjo-elkamira-ndi-a767b7229)
 
 *Where Campus Gist Lives 🇨🇲*
-
-</div>
