@@ -326,7 +326,7 @@ develop     → integration branch for all features
 feature/*   → individual feature branches
 fix/*       → bug fix branches
 ```
-
+my name is Afumbom Joel Chiabi a student of SWE north 
 ---
 
 ## License
