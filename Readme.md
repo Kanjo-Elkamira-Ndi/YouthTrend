@@ -6,7 +6,7 @@
 
 A bilingual (EN/FR) campus-first content & gist platform for Cameroonian university students —  
 monorepo powering the web app, REST API, and Flutter mobile client.
-
+my name is Esonge Piebeng Radian. This is my contribution.
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-In%20Development-blue)]()
 [![Made in Cameroon](https://img.shields.io/badge/Made%20in-Cameroon%20🇨🇲-009A44)]()
