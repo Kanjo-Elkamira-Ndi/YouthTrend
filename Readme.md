@@ -329,6 +329,11 @@ fix/*       → bug fix branches
 
 ---
 
+Here is my contribution:
+For YouthTrend, I want to add a page for SWE south students to share campus news, exam tips and opportunities in English and French.
+-Name: NJOFANG TAPDJA NESRINE ABIGAELLE
+-Username: Njofangabigaelle
+
 ## License
 
 This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
