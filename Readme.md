@@ -326,6 +326,8 @@ develop     → integration branch for all features
 feature/*   → individual feature branches
 fix/*       → bug fix branches
 ```
+My name is Djankou Orel Freshnel 
+This is my contribution 
 
 ---
 
