@@ -338,7 +338,7 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 ## Author
 
 <div align="center">
-
+My Name is BENGAI KINYAKE BERNICE and this is my contribution
 Built with 💚 by **KANJO ELKAMIRA NDI (ALCHEMY CODES)**
 
 [GitHub](https://github.com/Kanjo-Elkamira-Ndi) · [LinkedIn](https://www.linkedin.com/in/kanjo-elkamira-ndi-a767b7229)
