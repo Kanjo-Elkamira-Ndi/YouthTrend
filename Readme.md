@@ -1,11 +1,11 @@
 <div align="center">
 
-# YouthTrend 🌿
+# Youth-Trend 🌿
 
 **Your Campus. Your Gist. Your Voice.**
 
 A bilingual (EN/FR) campus-first content & gist platform for Cameroonian university students —  
-monorepo powering the web app, REST API, and Flutter mobile client.
+mono-repo powering the web app, REST API, and Flutter mobile client.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/Status-In%20Development-blue)]()
@@ -40,17 +40,17 @@ monorepo powering the web app, REST API, and Flutter mobile client.
 
 ## Overview
 
-YouthTrend is a Medium-inspired publishing and gist platform built specifically for Cameroonian university students. It gives students a structured, permanent, and moderated space to share news, opinions, announcements, stories, and hot takes — in English or French.
+Youth-Trend is a Medium-inspired publishing and gist platform built specifically for Cameroonian university students. It gives students a structured, permanent, and moderated space to share news, opinions, announcements, stories, and hot takes — in English or French.
 
-Unlike WhatsApp groups where campus gist disappears overnight, YouthTrend gives content a discoverable home with a real authorship system, campus-scoped feeds, and an institutional moderation layer that keeps things safe without being overbearing.
+Unlike WhatsApp groups where campus gist disappears overnight, Youth-Trend gives content a discoverable home with a real authorship system, campus-scoped feeds, and an institutional moderation layer that keeps things safe without being overbearing.
 
 The platform is structured around **campus nodes** — each university operates its own feed, managed by a Campus Admin and moderated by staff-appointed moderators. A Super Admin (the platform developer) oversees the entire system.
 
 ---
 
-## Why YouthTrend?
+## Why Youth-Trend?
 
-| Problem | YouthTrend Solution |
+| Problem | Youth-Trend Solution |
 |---|---|
 | Campus gist lives and dies in WhatsApp groups | Permanent, searchable, discoverable posts |
 | No platform targets Cameroonian student culture specifically | Built for Cameroon — bilingual, local names, local context |
@@ -75,7 +75,7 @@ The platform is structured around **campus nodes** — each university operates 
 
 ## Tech Stack
 
-### Web Frontend
+### Web Front-end
 - **React 18** + **Vite** + **TypeScript**
 - **Tailwind CSS** — utility-first styling
 - **Framer Motion** — animations and page transitions
@@ -310,7 +310,7 @@ See the full [SRS document](docs/YouthTrend_SRS.docx) for detailed requirements 
 
 ## Contributing
 
-YouthTrend is currently in active early development. Contributions are not open to the public yet.
+Youth-Trend is currently in active early development. Contributions are not open to the public yet.
 
 If you are a collaborator or have been invited to contribute:
 
@@ -342,7 +342,7 @@ This project is licensed under the **MIT License** — see the [LICENSE](LICENSE
 Built with 💚 by **KANJO ELKAMIRA NDI (ALCHEMY CODES)**
 
 [GitHub](https://github.com/Kanjo-Elkamira-Ndi) · [LinkedIn](https://www.linkedin.com/in/kanjo-elkamira-ndi-a767b7229)
-
+*A distracted mind is a powerless mind*
 *Where Campus Gist Lives 🇨🇲*
 
 </div>
