@@ -327,7 +327,6 @@ feature/*   → individual feature branches
 fix/*       → bug fix branches
 ```
 My name is TOWA HEUMOU AUREL VIDAL 
-This is my contribution 
 ---
 
 ## License
