@@ -327,7 +327,9 @@ feature/*   → individual feature branches
 fix/*       → bug fix branches
 ```
 
----
+---  here is my contribution
+
+- ** NDZANA TITUS ** ([MARKOV19](https://github.com/MARKOV19)) — Contributor
 
 ## License
 
