@@ -326,7 +326,7 @@ develop     → integration branch for all features
 feature/*   → individual feature branches
 fix/*       → bug fix branches
 ```
-
+My name is Nchiamukong Samuel Neba and this is my contribution.
 ---
 
 ## License
