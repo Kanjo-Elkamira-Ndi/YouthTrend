@@ -326,6 +326,13 @@ develop     → integration branch for all features
 feature/*   → individual feature branches
 fix/*       → bug fix branches
 ```
+# Student Project
+
+## Student Information
+
+- My name is ESSANGUEN NKEU ANGE STEVINE
+
+- This is my contribution.
 
 ---
 
