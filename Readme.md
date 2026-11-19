@@ -1,6 +1,7 @@
 <div align="center">
 
 # YouthTrend 🌿
+my name is damian ngamenyi this is my contribution 
 
 **Your Campus. Your Gist. Your Voice.**
 
