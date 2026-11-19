@@ -330,8 +330,9 @@ fix/*       → bug fix branches
 
 ## Student Information
 
-My name is ESSANGUEN NKEU ANGE STEVINE
-This is my contribution.
+- My name is ESSANGUEN NKEU ANGE STEVINE
+
+- This is my contribution.
 
 ---
 
