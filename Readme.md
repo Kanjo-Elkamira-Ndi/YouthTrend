@@ -346,3 +346,11 @@ Built with 💚 by **KANJO ELKAMIRA NDI (ALCHEMY CODES)**
 *Where Campus Gist Lives 🇨🇲*
 
 </div>
+my name is NYA NGASSAM NANCY I am contributing to the youth trend file.
+Hello everyone!
+
+I am happy to contribute to the Youth Trend project. As a young student interested in technology and innovation, I believe this project is a great opportunity to learn, share ideas and collaborate with others.
+
+I would love to contribute my ideas, improve the content and help make this project more useful and engaging for young people.
+
+Thank you for giving me the opportunity to contribute. I look forward to learning and working with the community!
