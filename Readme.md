@@ -324,9 +324,8 @@ If you are a collaborator or have been invited to contribute:
 main        → production-ready code only
 develop     → integration branch for all features
 feature/*   → individual feature branches
-fix/*       → bug fix branches
-```
-
+fix/*       → bug fix brancContribu
+My name is Clara Amabibi. This is my contribution.
 ---
 
 ## License
