@@ -328,6 +328,13 @@ fix/*       → bug fix branches
 ```
 
 ---
+# Student Project
+
+## Student Information 
+
+- My name is NTUMNYUY JENIFA BEERINYUY
+
+- This is my contribution.
 
 ## License
 
