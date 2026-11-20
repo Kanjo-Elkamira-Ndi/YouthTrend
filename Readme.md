@@ -345,4 +345,18 @@ Built with 💚 by **KANJO ELKAMIRA NDI (ALCHEMY CODES)**
 
 *Where Campus Gist Lives 🇨🇲*
 
-</div>
+</div>  ## ✨ My Contribution
+
+**Name:** [Nana Justine ]
+**University:** [ISEST]
+
+Hello! I am contributing to YouthTrend.
+
+### What I did:
+- I helped improve the README.md file
+- I added clear information for new contributors
+
+### Why YouthTrend?
+YouthTrend is a bilingual (EN/FR) platform for Cameroonian university students to share content and gist. I am excited to be part of it!
+
+Thank you for having me in this open-source project!
