@@ -107,7 +107,8 @@ The platform is structured around **campus nodes** — each university operates 
 ---
 
 ## Monorepo Structure
-
+This is my contribution
+my name is Aye Tsimi Moise of swe south and this is my contribution
 ```
 youthtrend-platform/
 │
