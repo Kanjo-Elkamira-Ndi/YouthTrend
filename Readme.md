@@ -328,7 +328,8 @@ fix/*       → bug fix branches
 ```
 
 ---
-
+MY NAME IS 'MANDE JOHANNA PRINCESS JESSE'
+AND THIS IS MY CONTRIBUTION
 ## License
 
 This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
