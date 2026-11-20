@@ -348,7 +348,7 @@ Built with 💚 by **KANJO ELKAMIRA NDI (ALCHEMY CODES)**
 </div>  ## ✨ My Contribution
 
 **Name:** [Nana Justine ]
-**University:** [ISEST]
+**University:** ISEST
 
 Hello! I am contributing to YouthTrend.
 
