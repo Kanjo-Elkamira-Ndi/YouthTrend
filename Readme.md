@@ -344,5 +344,6 @@ Built with 💚 by **KANJO ELKAMIRA NDI (ALCHEMY CODES)**
 [GitHub](https://github.com/Kanjo-Elkamira-Ndi) · [LinkedIn](https://www.linkedin.com/in/kanjo-elkamira-ndi-a767b7229)
 
 *Where Campus Gist Lives 🇨🇲*
+MY CONTRIBUTION IS
 
 </div>
