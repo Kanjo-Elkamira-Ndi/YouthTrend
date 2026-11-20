@@ -346,3 +346,11 @@ Built with 💚 by **KANJO ELKAMIRA NDI (ALCHEMY CODES)**
 *Where Campus Gist Lives 🇨🇲*
 
 </div>
+ Hello everyone 
+My name is HERMIONE CLOÉ.
+  
+I would love to contribute to this project by improving the README documentation. I am particularly interested in helping make the information clearer, more organized, and easier for other users to understand.
+
+I am still growing as a software engineering student, and I see this as a great opportunity to learn, collaborate, and contribute to the open-source community.
+
+I look forward to contributing. Thank you for this opportunity!
