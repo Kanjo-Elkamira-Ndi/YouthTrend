@@ -2,6 +2,7 @@
 
 # YouthTrend 🌿
 
+
 **Your Campus. Your Gist. Your Voice.**
 
 A bilingual (EN/FR) campus-first content & gist platform for Cameroonian university students —  
@@ -328,7 +329,7 @@ fix/*       → bug fix branches
 ```
 
 ---
-
+my name is clackson and here is my contribution.
 ## License
 
 This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
