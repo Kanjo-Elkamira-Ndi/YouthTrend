@@ -346,3 +346,7 @@ Built with 💚 by **KANJO ELKAMIRA NDI (ALCHEMY CODES)**
 *Where Campus Gist Lives 🇨🇲*
 
 </div>
+
+### my contribution
+My name is Njumencha Cheneke Fossimock.
+This is my contribution 
