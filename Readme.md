@@ -328,8 +328,8 @@ fix/*       → bug fix branches
 ```
 
 ---
-
-## License
+- My name is Fonsuika Edith Kate
+- This is my contribution.
 
 This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
 
