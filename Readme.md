@@ -344,5 +344,5 @@ Built with 💚 by **KANJO ELKAMIRA NDI (ALCHEMY CODES)**
 [GitHub](https://github.com/Kanjo-Elkamira-Ndi) · [LinkedIn](https://www.linkedin.com/in/kanjo-elkamira-ndi-a767b7229)
 
 *Where Campus Gist Lives 🇨🇲*
-
+My name is Houmi Noukague Lauryne Deanna, a software engeneering student. I am happy to be part of this repository and contribute to the YouthTrend project. I look forward to learning, sharing ideas, and improuving my skills through this initiative. Thanks for this opportunity.
 </div>
