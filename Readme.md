@@ -328,7 +328,8 @@ fix/*       → bug fix branches
 ```
 
 ---
-
+My name is Ngong Bless Josiah
+And is my contribution
 ## License
 
 This project is licensed under the **MIT License** — see the [LICENSE](LICENSE) file for details.
